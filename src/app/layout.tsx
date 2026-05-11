@@ -5,20 +5,20 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "FlowForge — Agency Project Flight Simulator",
+  title: "Origo — AI Developer Starting Point",
   description:
-    "Simulate entire client projects with AI agents before you start real work. Predict bottlenecks, conflicts, and scope creep in minutes.",
+    "Answer 8 questions, get a complete production-ready starter project. Every file, every config, every API route. Download and ship.",
   keywords: [
-    "agency project management",
-    "AI simulation",
-    "project risk analysis",
-    "creative agency tools",
-    "scope creep prevention",
+    "developer starter",
+    "project scaffolding",
+    "AI code generation",
+    "Next.js starter",
+    "boilerplate generator",
   ],
   openGraph: {
-    title: "FlowForge — Agency Project Flight Simulator",
+    title: "Origo — AI Developer Starting Point",
     description:
-      "Simulate projects with AI agents. Predict risks before they happen.",
+      "Answer 8 questions, get a complete starter project. Download ZIP and start building.",
     type: "website",
   },
 };

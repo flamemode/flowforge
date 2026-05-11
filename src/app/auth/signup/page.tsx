@@ -65,10 +65,10 @@ export default function SignupPage() {
             href="/"
             className="inline-flex items-center gap-2 font-bold text-xl text-zinc-900 mb-6"
           >
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center">
               <Zap className="w-4 h-4 text-white" />
             </div>
-            FlowForge
+            Origo
           </Link>
           <h1 className="text-2xl font-bold text-zinc-900">Start for free</h1>
           <p className="text-zinc-500 mt-1 text-sm">
@@ -143,7 +143,7 @@ export default function SignupPage() {
 
         <p className="text-center text-sm text-zinc-500 mt-6">
           Already have an account?{" "}
-          <Link href="/auth/login" className="text-indigo-600 font-medium hover:underline">
+          <Link href="/auth/login" className="text-violet-500 font-medium hover:underline">
             Sign in
           </Link>
         </p>

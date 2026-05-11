@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
         currency: "usd",
         unit_amount: pack.price * 100,
         product_data: {
-          name: `FlowForge ${pack.name}`,
+          name: `Origo ${pack.name}`,
           description: `${pack.credits} project run${pack.credits > 1 ? "s" : ""} — simulate + build logo, website & marketing`,
         },
       },

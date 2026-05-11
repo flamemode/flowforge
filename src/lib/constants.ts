@@ -1,80 +1,7 @@
-import type { Agent, AgentRole, PricingTier, CreditPack } from "@/types";
+import type { CreditPack } from "@/types";
 
-export const AGENTS: Record<AgentRole, Agent> = {
-  client_liaison: {
-    role: "client_liaison",
-    name: "Alex Chen",
-    emoji: "🤝",
-    color: "#6366f1",
-    description: "Manages all client communication and expectations",
-  },
-  project_manager: {
-    role: "project_manager",
-    name: "Jordan Taylor",
-    emoji: "📋",
-    color: "#f59e0b",
-    description: "Orchestrates timelines, resources, and deliverables",
-  },
-  creative_director: {
-    role: "creative_director",
-    name: "Sam Rivera",
-    emoji: "🎨",
-    color: "#ec4899",
-    description: "Drives creative vision and design quality",
-  },
-  copywriter: {
-    role: "copywriter",
-    name: "Morgan Blake",
-    emoji: "✍️",
-    color: "#10b981",
-    description: "Shapes brand voice, messaging, and content strategy",
-  },
-  developer: {
-    role: "developer",
-    name: "Riley Kim",
-    emoji: "💻",
-    color: "#3b82f6",
-    description: "Builds and integrates technical solutions",
-  },
-  qa_tester: {
-    role: "qa_tester",
-    name: "Casey Zhang",
-    emoji: "🔍",
-    color: "#8b5cf6",
-    description: "Ensures quality, catches issues, and validates delivery",
-  },
-  account_manager: {
-    role: "account_manager",
-    name: "Drew Santos",
-    emoji: "💼",
-    color: "#f97316",
-    description: "Manages the business relationship and upsell opportunities",
-  },
-};
+// ─── Credit packs ─────────────────────────────────────────────────────────────
 
-export const AGENT_ORDER: AgentRole[] = [
-  "project_manager",
-  "client_liaison",
-  "creative_director",
-  "copywriter",
-  "developer",
-  "qa_tester",
-  "account_manager",
-];
-
-export const SIMULATION_ROUNDS = 7;
-
-export const PROJECT_PHASES = [
-  "kickoff",
-  "discovery",
-  "planning",
-  "design",
-  "development",
-  "review",
-  "delivery",
-] as const;
-
-// Credit packs — one-time purchases, no subscription required
 export const CREDIT_PACKS: CreditPack[] = [
   {
     id: "starter",
@@ -103,112 +30,101 @@ export const CREDIT_PACKS: CreditPack[] = [
   },
 ];
 
-// Free credits on signup
 export const FREE_CREDITS = 2;
-
-// Iterations included per deliverable before paying
-export const FREE_ITERATIONS = 2;
-
-// Price per extra iteration (Stripe one-time)
 export const ITERATION_PRICE = 5;
 
-// Each "credit" = 1 full simulate + execute run (simulation + all deliverables)
-export const PRICING_TIERS: PricingTier[] = [
-  {
-    id: "free",
-    name: "Starter",
-    price_monthly: 0,
-    price_annual: 0,
-    simulations_per_month: 1,
-    max_users: 1,
-    features: [
-      "1 full project run per month",
-      "Simulate + Execute",
-      "SVG logo + brand guidelines",
-      "Basic website (watermarked)",
-      "Marketing strategy outline",
-      "7-day file access",
-    ],
-  },
-  {
-    id: "pro",
-    name: "Studio",
-    price_monthly: 99,
-    price_annual: 79,
-    simulations_per_month: 10,
-    max_users: 1,
-    highlighted: true,
-    features: [
-      "10 full project runs/month",
-      "All 7 specialized agents",
-      "SVG logo + full brand pack",
-      "Complete website (HTML/CSS/JS)",
-      "Full marketing strategy",
-      "30-day social media calendar",
-      "Ad copy (Google + Meta)",
-      "Download all deliverables",
-    ],
-  },
-  {
-    id: "team",
-    name: "Agency",
-    price_monthly: 299,
-    price_annual: 249,
-    simulations_per_month: 50,
-    max_users: 10,
-    features: [
-      "50 project runs/month",
-      "Everything in Studio",
-      "Up to 10 team members",
-      "Shared project library",
-      "White-label deliverables",
-      "Custom brand voice training",
-      "Priority AI processing",
-      "Client-ready export packs",
-    ],
-  },
-  {
-    id: "agency",
-    name: "Enterprise",
-    price_monthly: 799,
-    price_annual: 649,
-    simulations_per_month: null,
-    max_users: null,
-    features: [
-      "Unlimited project runs",
-      "Everything in Agency",
-      "Unlimited users",
-      "Custom agent training on your past work",
-      "API access",
-      "Dedicated account manager",
-      "2h support SLA",
-      "Onboarding + setup call",
-    ],
-  },
-];
+// ─── Questionnaire options ────────────────────────────────────────────────────
 
-export const SIMULATION_LIMITS: Record<string, number | null> = {
-  free: 1,
-  pro: 10,
-  team: 50,
-  agency: null,
-};
+export const PROJECT_TYPE_OPTIONS = [
+  { value: "saas", label: "SaaS App", icon: "⚡" },
+  { value: "ecommerce", label: "E-Commerce", icon: "🛒" },
+  { value: "photography", label: "Photography", icon: "📷" },
+  { value: "portfolio", label: "Portfolio", icon: "🎨" },
+  { value: "blog", label: "Blog / CMS", icon: "✍️" },
+  { value: "dashboard", label: "Dashboard", icon: "📊" },
+  { value: "landing", label: "Landing Page", icon: "🚀" },
+  { value: "api_backend", label: "API / Backend", icon: "🔧" },
+] as const;
 
-export const CLIENT_PERSONALITY_LABELS: Record<string, string> = {
-  collaborative: "Collaborative Partner",
-  indecisive_founder: "Indecisive Founder",
-  micromanager_cmo: "Micromanager CMO",
-  visionary_vague: "Visionary but Vague",
-  budget_hawk: "Budget Hawk",
-  scope_creeper: "Scope Creeper",
-};
+export const FRAMEWORK_OPTIONS = [
+  { value: "nextjs", label: "Next.js", description: "Full-stack React framework" },
+  { value: "remix", label: "Remix", description: "Full-stack web framework" },
+  { value: "astro", label: "Astro", description: "Content-focused framework" },
+  { value: "vue", label: "Vue / Nuxt", description: "Progressive JS framework" },
+  { value: "plain_html", label: "Plain HTML", description: "No framework" },
+] as const;
 
-export const PROJECT_TYPE_LABELS: Record<string, string> = {
-  brand_identity: "Brand Identity",
-  website_design: "Website Design",
-  web_development: "Web Development",
-  ui_ux_design: "UI/UX Design",
-  digital_marketing: "Digital Marketing Campaign",
-  content_strategy: "Content Strategy",
-  full_service: "Full-Service Engagement",
+export const LANGUAGE_OPTIONS = [
+  { value: "typescript", label: "TypeScript", description: "Recommended — type safety" },
+  { value: "javascript", label: "JavaScript", description: "No types" },
+] as const;
+
+export const STYLING_OPTIONS = [
+  { value: "tailwind", label: "Tailwind CSS", description: "Utility-first — most popular" },
+  { value: "css_modules", label: "CSS Modules", description: "Scoped CSS files" },
+  { value: "sass", label: "Sass / SCSS", description: "CSS preprocessor" },
+  { value: "styled_components", label: "Styled Components", description: "CSS-in-JS" },
+] as const;
+
+export const DATABASE_OPTIONS = [
+  { value: "supabase", label: "Supabase", description: "Postgres + Auth + Storage" },
+  { value: "planetscale", label: "PlanetScale", description: "Serverless MySQL" },
+  { value: "mongodb", label: "MongoDB", description: "Document database" },
+  { value: "firebase", label: "Firebase", description: "Google NoSQL + Auth" },
+  { value: "prisma_postgres", label: "Prisma + Postgres", description: "ORM + raw Postgres" },
+  { value: "none", label: "None", description: "No database" },
+] as const;
+
+export const CMS_OPTIONS = [
+  { value: "payload", label: "Payload CMS", description: "Code-first, TypeScript native" },
+  { value: "sanity", label: "Sanity", description: "Structured content platform" },
+  { value: "contentful", label: "Contentful", description: "Headless CMS" },
+  { value: "wordpress", label: "WordPress (headless)", description: "WP REST API / GraphQL" },
+  { value: "none", label: "None", description: "No CMS" },
+] as const;
+
+export const AUTH_OPTIONS = [
+  { value: "supabase_auth", label: "Supabase Auth", description: "Built into Supabase" },
+  { value: "nextauth", label: "NextAuth.js", description: "Flexible auth for Next.js" },
+  { value: "clerk", label: "Clerk", description: "Drop-in auth UI + management" },
+  { value: "lucia", label: "Lucia", description: "Lightweight auth library" },
+  { value: "none", label: "None", description: "No auth" },
+] as const;
+
+export const PAYMENT_OPTIONS = [
+  { value: "stripe", label: "Stripe", description: "Most popular payments" },
+  { value: "lemonsqueezy", label: "Lemon Squeezy", description: "SaaS-focused payments" },
+  { value: "none", label: "None", description: "No payments" },
+] as const;
+
+export const EXTRA_API_OPTIONS = [
+  { value: "cloudinary", label: "Cloudinary", description: "Image/video hosting" },
+  { value: "resend", label: "Resend", description: "Transactional email" },
+  { value: "mapbox", label: "Mapbox", description: "Maps & geolocation" },
+  { value: "openai", label: "OpenAI", description: "GPT + embeddings" },
+  { value: "anthropic", label: "Anthropic", description: "Claude AI" },
+  { value: "pusher", label: "Pusher", description: "Real-time websockets" },
+  { value: "algolia", label: "Algolia", description: "Search-as-a-service" },
+  { value: "twilio", label: "Twilio", description: "SMS / voice" },
+] as const;
+
+// ─── File language detection ──────────────────────────────────────────────────
+
+export const FILE_LANGUAGE_MAP: Record<string, string> = {
+  ts: "typescript",
+  tsx: "typescript",
+  js: "javascript",
+  jsx: "javascript",
+  json: "json",
+  css: "css",
+  scss: "scss",
+  html: "html",
+  md: "markdown",
+  sql: "sql",
+  env: "bash",
+  gitignore: "bash",
+  sh: "bash",
+  yml: "yaml",
+  yaml: "yaml",
+  toml: "toml",
 };

@@ -1,24 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { Zap, LayoutDashboard, LogOut } from "lucide-react";
+import { Zap, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 interface NavbarProps {
   userEmail?: string;
-  tier?: string;
+  credits?: number;
 }
 
-const navLinks = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-];
-
-export function Navbar({ userEmail, tier }: NavbarProps) {
-  const pathname = usePathname();
+export function Navbar({ userEmail, credits }: NavbarProps) {
   const router = useRouter();
 
   const handleSignOut = async () => {
@@ -28,45 +21,25 @@ export function Navbar({ userEmail, tier }: NavbarProps) {
   };
 
   return (
-    <nav className="h-14 border-b border-zinc-200 bg-white flex items-center px-6 gap-6">
-      <Link href="/dashboard" className="flex items-center gap-2 font-bold text-zinc-900">
-        <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
+    <nav className="h-14 border-b border-zinc-800 bg-zinc-950 flex items-center px-6 gap-6 text-white">
+      <Link href="/dashboard" className="flex items-center gap-2 font-bold text-white">
+        <div className="w-7 h-7 bg-violet-600 rounded-lg flex items-center justify-center">
           <Zap className="w-4 h-4 text-white" />
         </div>
-        FlowForge
+        Origo
       </Link>
 
-      <div className="flex items-center gap-1">
-        {navLinks.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-              pathname.startsWith(href)
-                ? "bg-indigo-50 text-indigo-700"
-                : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
-            )}
-          >
-            <Icon className="w-4 h-4" />
-            {label}
-          </Link>
-        ))}
-      </div>
-
-      <div className="ml-auto flex items-center gap-3">
-        {tier && tier !== "free" && (
-          <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full capitalize">
-            {tier}
-          </span>
-        )}
-        {tier === "free" && (
-          <Button size="sm" asChild>
-            <Link href="/pricing">Upgrade</Link>
-          </Button>
+      <div className="ml-auto flex items-center gap-4">
+        {credits !== undefined && (
+          <div className="flex items-center gap-1.5 text-sm">
+            <Zap className="w-4 h-4 text-violet-400" />
+            <span className="text-zinc-300">
+              <span className="font-bold text-white">{credits}</span> credit{credits !== 1 ? "s" : ""}
+            </span>
+          </div>
         )}
         <span className="text-sm text-zinc-500 hidden md:block">{userEmail}</span>
-        <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign out">
+        <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign out" className="text-zinc-400 hover:text-white">
           <LogOut className="w-4 h-4" />
         </Button>
       </div>

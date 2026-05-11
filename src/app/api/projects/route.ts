@@ -4,88 +4,81 @@ import { z } from "zod";
 
 const createProjectSchema = z.object({
   name: z.string().min(1).max(100),
-  client_type: z.string().min(1),
-  project_type: z.enum([
-    "brand_identity",
-    "website_design",
-    "web_development",
-    "ui_ux_design",
-    "digital_marketing",
-    "content_strategy",
-    "full_service",
-  ]),
-  budget: z.number().positive(),
-  timeline_weeks: z.number().int().min(1).max(104),
-  team_size: z.number().int().min(1).max(50),
-  client_personality: z.enum([
-    "collaborative",
-    "indecisive_founder",
-    "micromanager_cmo",
-    "visionary_vague",
-    "budget_hawk",
-    "scope_creeper",
-  ]),
-  scope_description: z.string().min(10),
-  special_requirements: z.string().optional(),
+  questionnaire: z.object({
+    project_type: z.string(),
+    framework: z.string(),
+    language: z.string(),
+    styling: z.string(),
+    database: z.string(),
+    cms: z.string(),
+    auth: z.string(),
+    payments: z.string(),
+    extra_apis: z.array(z.string()),
+    description: z.string().min(1),
+    project_name: z.string().min(1),
+  }),
 });
 
 export async function GET() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data, error } = await supabase
-    .from("projects")
-    .select("*, simulations(id, status, success_probability, created_at)")
+    .from("generated_projects")
+    .select("*")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ projects: data });
 }
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
+  try { body = await request.json(); } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
   const parsed = createProjectSchema.safeParse(body);
-  if (!parsed.success) {
+  if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+
+  // Check and spend credit
+  const { data: profile } = await supabase
+    .from("profiles").select("credits").eq("id", user.id).single();
+
+  if (!profile || profile.credits <= 0) {
     return NextResponse.json(
-      { error: parsed.error.issues[0].message },
-      { status: 400 }
+      { error: "No credits remaining. Purchase a pack to continue.", code: "NO_CREDITS" },
+      { status: 402 }
+    );
+  }
+
+  const { data: spent } = await supabase.rpc("spend_credit", { user_uuid: user.id });
+  if (!spent) {
+    return NextResponse.json(
+      { error: "No credits remaining.", code: "NO_CREDITS" },
+      { status: 402 }
     );
   }
 
   const { data, error } = await supabase
-    .from("projects")
-    .insert({ ...parsed.data, user_id: user.id })
+    .from("generated_projects")
+    .insert({
+      user_id: user.id,
+      name: parsed.data.name,
+      questionnaire: parsed.data.questionnaire,
+      status: "pending",
+    })
     .select()
     .single();
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ project: data }, { status: 201 });
 }
