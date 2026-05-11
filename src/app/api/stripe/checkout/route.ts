@@ -18,6 +18,10 @@ const PRICE_IDS: Record<string, string> = {
 };
 
 export async function POST(request: NextRequest) {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return NextResponse.json({ error: "Stripe is not configured" }, { status: 503 });
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
