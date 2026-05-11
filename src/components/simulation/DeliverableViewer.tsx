@@ -246,13 +246,38 @@ export function DeliverableViewer({
             )}
 
             {activeDeliverable.type === "website_html" && (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <iframe
                   srcDoc={activeDeliverable.content}
                   className="w-full h-[600px] rounded-xl border border-zinc-200"
                   sandbox="allow-scripts"
                   title="Website Preview"
                 />
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
+                  <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    How to publish your website for free
+                  </h4>
+                  <ol className="space-y-3 text-sm text-blue-800">
+                    <li className="flex gap-3">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                      <span>Click <strong>Download</strong> above to save the <code className="bg-blue-100 px-1 rounded">website_html.html</code> file to your computer.</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                      <span>Go to <strong>netlify.com/drop</strong> — no account needed. Drag and drop your HTML file onto the page.</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                      <span>Netlify gives you a live URL instantly (e.g. <code className="bg-blue-100 px-1 rounded">random-name.netlify.app</code>). Share it with anyone.</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">4</span>
+                      <span><strong>Want a custom domain?</strong> Sign up for a free Netlify account, connect your domain (bought at Namecheap or GoDaddy for ~$10/year), and point it to your site in Netlify&apos;s dashboard.</span>
+                    </li>
+                  </ol>
+                  <p className="text-xs text-blue-600 mt-3">Hosting is completely free on Netlify&apos;s free plan for personal and small business sites.</p>
+                </div>
               </div>
             )}
 
