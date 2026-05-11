@@ -58,9 +58,13 @@ export default function ProjectPage() {
           setFiles(f);
           selectFile(f[0]);
         }
-        if (project?.status === "pending" || project?.status === "generating" || project?.status === "failed") {
-          startGeneration();
-        }
+        const needsGeneration =
+          project?.status === "pending" ||
+          project?.status === "generating" ||
+          project?.status === "failed" ||
+          (project?.status === "complete" && (!f || f.length === 0));
+
+        if (needsGeneration) startGeneration();
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);

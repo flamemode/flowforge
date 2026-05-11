@@ -29,8 +29,17 @@ export async function POST(
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
+  // Block re-generation only if complete AND files actually exist
   if (project.status === "complete") {
-    return NextResponse.json({ error: "Already generated" }, { status: 409 });
+    const { count } = await supabase
+      .from("generated_files")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", id);
+
+    if (count && count > 0) {
+      return NextResponse.json({ error: "Already generated" }, { status: 409 });
+    }
+    // Complete but 0 files = previous failed insert, allow regeneration
   }
 
   // Clear any partial files from a previous failed attempt
