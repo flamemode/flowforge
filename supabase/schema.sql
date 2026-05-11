@@ -265,3 +265,57 @@ create policy "Users can manage own deliverables"
 
 -- Grant permissions
 grant all on public.deliverables to authenticated;
+
+-- ─── CREDIT SYSTEM ────────────────────────────────────────────────────────────
+
+-- Add credits column to profiles
+alter table public.profiles
+  add column if not exists credits integer not null default 2;
+
+-- Track credit purchases
+create table if not exists public.credit_purchases (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  stripe_payment_intent_id text unique,
+  pack_id text not null,
+  credits integer not null,
+  amount_paid integer not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.credit_purchases enable row level security;
+
+create policy "Users can view own purchases"
+  on public.credit_purchases for select using (auth.uid() = user_id);
+
+grant all on public.credit_purchases to authenticated;
+
+-- Add iteration tracking to deliverables
+alter table public.deliverables
+  add column if not exists iteration integer not null default 1;
+
+-- Function: spend a credit
+create or replace function public.spend_credit(user_uuid uuid)
+returns boolean as $$
+declare
+  current_credits integer;
+begin
+  select credits into current_credits from public.profiles where id = user_uuid;
+  if current_credits <= 0 then return false; end if;
+  update public.profiles set credits = credits - 1 where id = user_uuid;
+  return true;
+end;
+$$ language plpgsql security definer;
+
+grant execute on function public.spend_credit(uuid) to authenticated;
+
+-- Function: add credits
+create or replace function public.add_credits(user_uuid uuid, amount integer)
+returns void as $$
+begin
+  update public.profiles set credits = credits + amount where id = user_uuid;
+end;
+$$ language plpgsql security definer;
+
+-- Run this to give existing users 2 free credits:
+update public.profiles set credits = 2 where credits = 0;

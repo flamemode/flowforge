@@ -18,6 +18,19 @@ export type SimulationStatus =
 
 export type SubscriptionTier = "free" | "pro" | "team" | "agency";
 
+export type CreditPackId = "starter" | "studio" | "agency";
+
+export interface CreditPack {
+  id: CreditPackId;
+  name: string;
+  credits: number;
+  price: number;
+  price_per_run: number;
+  stripe_price_id?: string;
+  highlighted?: boolean;
+  tag?: string;
+}
+
 export type ClientPersonality =
   | "collaborative"
   | "indecisive_founder"
@@ -139,6 +152,7 @@ export interface UserProfile {
   full_name?: string;
   agency_name?: string;
   subscription_tier: SubscriptionTier;
+  credits: number;
   simulations_used_this_month: number;
   stripe_customer_id?: string;
   created_at: string;

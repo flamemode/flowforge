@@ -1,4 +1,4 @@
-import type { Agent, AgentRole, PricingTier } from "@/types";
+import type { Agent, AgentRole, PricingTier, CreditPack } from "@/types";
 
 export const AGENTS: Record<AgentRole, Agent> = {
   client_liaison: {
@@ -73,6 +73,44 @@ export const PROJECT_PHASES = [
   "review",
   "delivery",
 ] as const;
+
+// Credit packs — one-time purchases, no subscription required
+export const CREDIT_PACKS: CreditPack[] = [
+  {
+    id: "starter",
+    name: "Starter Pack",
+    credits: 1,
+    price: 19,
+    price_per_run: 19,
+    tag: "Try it out",
+  },
+  {
+    id: "studio",
+    name: "Studio Pack",
+    credits: 5,
+    price: 59,
+    price_per_run: 11.8,
+    highlighted: true,
+    tag: "Most popular",
+  },
+  {
+    id: "agency",
+    name: "Agency Pack",
+    credits: 20,
+    price: 149,
+    price_per_run: 7.45,
+    tag: "Best value",
+  },
+];
+
+// Free credits on signup
+export const FREE_CREDITS = 2;
+
+// Iterations included per deliverable before paying
+export const FREE_ITERATIONS = 2;
+
+// Price per extra iteration (Stripe one-time)
+export const ITERATION_PRICE = 5;
 
 // Each "credit" = 1 full simulate + execute run (simulation + all deliverables)
 export const PRICING_TIERS: PricingTier[] = [
