@@ -33,9 +33,12 @@ export async function POST(
     return NextResponse.json({ error: "Already generated" }, { status: 409 });
   }
 
+  // Clear any partial files from a previous failed attempt
+  await supabase.from("generated_files").delete().eq("project_id", id);
+
   await supabase
     .from("generated_projects")
-    .update({ status: "generating" })
+    .update({ status: "generating", file_count: 0, completed_at: null })
     .eq("id", id);
 
   const stream = new ReadableStream({

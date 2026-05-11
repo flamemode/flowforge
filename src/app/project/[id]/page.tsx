@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FileTree } from "@/components/project/FileTree";
 import { FileViewer } from "@/components/project/FileViewer";
 import type { GeneratedProject, GeneratedFile } from "@/types";
-import { Download, Zap, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Download, Zap, Loader2, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
 
 interface GenerationEvent {
   type: "progress" | "file" | "complete" | "error";
@@ -23,9 +23,15 @@ const STEPS = [
   "Generating config files...",
   "Generating .env.example...",
   "Generating database schema...",
-  "Generating core app files...",
-  "Generating components...",
+  "Generating app layout and pages...",
+  "Generating lib utilities...",
+  "Generating feature pages...",
+  "Generating UI components...",
+  "Generating layout components...",
+  "Generating feature components...",
   "Generating API routes...",
+  "Generating CMS files...",
+  "Generating public assets...",
   "Generating README...",
 ];
 
@@ -50,12 +56,22 @@ export default function ProjectPage() {
           setFiles(f);
           setSelectedPath(f[0].path);
         }
-        if (project?.status === "pending" || project?.status === "generating") {
+        if (project?.status === "pending" || project?.status === "generating" || project?.status === "failed") {
           startGeneration();
         }
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const retryGeneration = () => {
+    streamRef.current = false;
+    setFiles([]);
+    setSelectedPath(null);
+    setCompletedSteps([]);
+    setCurrentLabel("");
+    setProject((p) => p ? { ...p, status: "generating" } : p);
+    startGeneration();
+  };
 
   const startGeneration = async () => {
     if (streamRef.current) return;
@@ -228,9 +244,17 @@ export default function ProjectPage() {
           {error ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center max-w-sm">
-                <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-                <p className="text-zinc-300 font-medium mb-1">Generation failed</p>
-                <p className="text-zinc-500 text-sm">{error}</p>
+                <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-4" />
+                <p className="text-zinc-300 font-semibold mb-2">Generation failed</p>
+                <p className="text-zinc-500 text-sm mb-6">{error}</p>
+                <Button
+                  onClick={retryGeneration}
+                  className="bg-violet-600 hover:bg-violet-700 gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Retry generation
+                </Button>
+                <p className="text-zinc-600 text-xs mt-3">No credit will be charged for retries</p>
               </div>
             </div>
           ) : (
