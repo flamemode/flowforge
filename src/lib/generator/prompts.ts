@@ -1,19 +1,17 @@
 import type { ProjectQuestionnaire } from "@/types";
 
 export function getSystemPrompt(): string {
-  return `You are an expert software engineer. You generate complete, production-quality starter projects.
+  return `You are an expert software engineer generating complete, production-quality starter projects.
 
-CRITICAL RULES:
-- Always use FULL file paths. For Next.js: "src/app/page.tsx", "src/components/ui/Button.tsx", "public/favicon.ico" etc.
-- Never use short paths like "page.tsx" — always include the full path from project root.
-- Write complete, working code — no placeholders, no TODOs, no "// add code here".
-- Every file must be fully implemented and functional.
-- Use TypeScript when the language is "typescript". Use .ts/.tsx extensions.
-- Follow framework conventions exactly (Next.js App Router, not Pages Router).
-- Honor the design_style and color_scheme fields: apply the correct color palette, typography, and spacing in all UI files.
-- Honor the animations field: "none" means no transitions; "subtle" means CSS transitions only; "moderate" means CSS + scroll reveal; "rich" means framer-motion with page transitions and micro-interactions.
-- Honor the features field: implement every selected feature (dark_mode toggle, SEO meta tags, PWA manifest, analytics script, search UI, notifications, file upload, admin panel, comments, social login, export buttons, i18n setup, multi-tenant middleware, rate limiting, webhooks).
-- When returning JSON, return ONLY the raw JSON object. No markdown fences, no explanation, no text before or after.`;
+ABSOLUTE RULES — never break these:
+1. FULL file paths always. "src/app/page.tsx" not "page.tsx". "src/components/ui/Button.tsx" not "Button.tsx".
+2. Every file is 100% complete — no "// TODO", no "// implement here", no truncation, no "..." shorthand.
+3. TypeScript when language is typescript. Files end in .ts or .tsx.
+4. Next.js App Router only — never Pages Router (no pages/ directory).
+5. When returning JSON: return ONLY the raw JSON object. Zero markdown fences, zero explanation, nothing before or after the {.
+6. Apply design_style and color_scheme to every UI file's CSS/classes.
+7. animations="none" → no transitions. "subtle" → CSS transitions only. "moderate" → CSS + Intersection Observer. "rich" → framer-motion.
+8. Implement every item listed in features[] in the relevant files.`;
 }
 
 function stackSummary(q: ProjectQuestionnaire): string {
@@ -27,7 +25,7 @@ function stackSummary(q: ProjectQuestionnaire): string {
     q.cms !== "none" ? `CMS: ${q.cms}` : null,
     q.auth !== "none" ? `Auth: ${q.auth}` : null,
     q.payments !== "none" ? `Payments: ${q.payments}` : null,
-    q.extra_apis.length > 0 ? `Extra APIs: ${q.extra_apis.join(", ")}` : null,
+    q.extra_apis?.length > 0 ? `Extra APIs: ${q.extra_apis.join(", ")}` : null,
     q.design_style ? `Design style: ${q.design_style}` : null,
     q.color_scheme ? `Color scheme: ${q.color_scheme}` : null,
     q.animations ? `Animations: ${q.animations}` : null,
@@ -39,40 +37,55 @@ function stackSummary(q: ProjectQuestionnaire): string {
 const ext = (q: ProjectQuestionnaire) => q.language === "typescript" ? "ts" : "js";
 const tsx = (q: ProjectQuestionnaire) => q.language === "typescript" ? "tsx" : "jsx";
 
+function jsonInstruction(): string {
+  return `Return a JSON object: { "full/path/file.ext": "complete file content", ... }
+Return ONLY the JSON. No markdown, no explanation, no text outside the JSON.`;
+}
+
 // ─── Step 1: package.json ─────────────────────────────────────────────────────
 
 export function getPackageJsonPrompt(q: ProjectQuestionnaire): string {
-  const name = q.project_name.toLowerCase().replace(/\s+/g, "-");
-  return `Generate a complete, valid package.json for this project:
+  const name = q.project_name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+  return `Generate a complete, valid package.json for this project.
 
 ${stackSummary(q)}
 
 Requirements:
-- name: "${name}"
-- Include ALL required dependencies with real current version numbers
-- Include devDependencies (TypeScript, ESLint, Prettier, types packages)
-- Scripts: dev, build, start, lint, type-check
-${q.framework === "nextjs" ? "- Next.js 15, React 19" : ""}
-${q.styling === "tailwind" ? "- tailwindcss 4, @tailwindcss/vite or postcss" : ""}
-${q.database === "supabase" ? "- @supabase/supabase-js, @supabase/ssr" : ""}
-${q.database === "prisma_postgres" || q.database === "planetscale" ? "- @prisma/client, prisma" : ""}
-${q.database === "mongodb" ? "- mongoose" : ""}
-${q.auth === "nextauth" ? "- next-auth" : ""}
-${q.auth === "clerk" ? "- @clerk/nextjs" : ""}
-${q.payments === "stripe" ? "- stripe, @stripe/stripe-js" : ""}
-${q.payments === "lemonsqueezy" ? "- @lemonsqueezy/lemonsqueezy-js" : ""}
-${q.extra_apis.includes("resend") ? "- resend" : ""}
-${q.extra_apis.includes("openai") ? "- openai" : ""}
-${q.extra_apis.includes("anthropic") ? "- @anthropic-ai/sdk" : ""}
-${q.extra_apis.includes("cloudinary") ? "- cloudinary, next-cloudinary" : ""}
-${q.cms === "payload" ? "- payload, @payloadcms/next, @payloadcms/db-postgres or @payloadcms/db-mongodb" : ""}
-${q.cms === "sanity" ? "- next-sanity, @sanity/image-url, sanity" : ""}
-${q.cms === "contentful" ? "- contentful" : ""}
-${q.animations === "rich" ? "- framer-motion" : ""}
-${q.features?.includes("i18n") ? "- next-intl" : ""}
-${q.features?.includes("analytics") ? "- @vercel/analytics" : ""}
-${q.features?.includes("pwa") ? "- next-pwa" : ""}
-${q.project_type === "game" ? "- phaser" : ""}
+- "name": "${name}"
+- Real, current version numbers for every dependency (no "latest", no "*")
+- devDependencies: typescript, eslint, prettier, @types/node, @types/react, @types/react-dom
+- scripts: { "dev": "next dev", "build": "next build", "start": "next start", "lint": "next lint", "type-check": "tsc --noEmit" }
+
+Required dependencies based on stack:
+${q.framework === "nextjs" ? "- next: ^15.0.0, react: ^19.0.0, react-dom: ^19.0.0" : ""}
+${q.styling === "tailwind" ? "- tailwindcss: ^4.0.0, @tailwindcss/postcss: ^4.0.0" : ""}
+${q.styling === "styled_components" ? "- styled-components: ^6.0.0" : ""}
+- clsx: ^2.1.0, tailwind-merge: ^2.5.0
+${q.database === "supabase" ? "- @supabase/supabase-js: ^2.46.0, @supabase/ssr: ^0.5.0" : ""}
+${q.database === "prisma_postgres" || q.database === "planetscale" ? "- @prisma/client: ^6.0.0\n- prisma: ^6.0.0 (devDependency)" : ""}
+${q.database === "mongodb" ? "- mongoose: ^8.0.0" : ""}
+${q.database === "firebase" ? "- firebase: ^11.0.0" : ""}
+${q.auth === "nextauth" ? "- next-auth: ^5.0.0" : ""}
+${q.auth === "clerk" ? "- @clerk/nextjs: ^6.0.0" : ""}
+${q.auth === "lucia" ? "- lucia: ^3.0.0, oslo: ^1.2.0" : ""}
+${q.payments === "stripe" ? "- stripe: ^17.0.0, @stripe/stripe-js: ^4.0.0" : ""}
+${q.payments === "lemonsqueezy" ? "- @lemonsqueezy/lemonsqueezy-js: ^1.3.0" : ""}
+${q.extra_apis?.includes("resend") ? "- resend: ^4.0.0" : ""}
+${q.extra_apis?.includes("openai") ? "- openai: ^4.70.0" : ""}
+${q.extra_apis?.includes("anthropic") ? "- @anthropic-ai/sdk: ^0.32.0" : ""}
+${q.extra_apis?.includes("cloudinary") ? "- cloudinary: ^2.5.0, next-cloudinary: ^6.0.0" : ""}
+${q.extra_apis?.includes("pusher") ? "- pusher: ^5.2.0, pusher-js: ^8.4.0" : ""}
+${q.extra_apis?.includes("algolia") ? "- algoliasearch: ^5.0.0" : ""}
+${q.extra_apis?.includes("mapbox") ? "- mapbox-gl: ^3.7.0, @types/mapbox-gl: ^3.4.0" : ""}
+${q.extra_apis?.includes("twilio") ? "- twilio: ^5.3.0" : ""}
+${q.cms === "payload" ? "- payload: ^3.0.0, @payloadcms/next: ^3.0.0, @payloadcms/richtext-lexical: ^3.0.0" : ""}
+${q.cms === "sanity" ? "- next-sanity: ^9.0.0, @sanity/image-url: ^1.0.3, sanity: ^3.60.0" : ""}
+${q.cms === "contentful" ? "- contentful: ^11.0.0" : ""}
+${q.animations === "rich" ? "- framer-motion: ^11.0.0" : ""}
+${q.features?.includes("i18n") ? "- next-intl: ^3.20.0" : ""}
+${q.features?.includes("analytics") ? "- @vercel/analytics: ^1.3.0" : ""}
+${q.features?.includes("pwa") ? "- next-pwa: ^5.6.0" : ""}
+${q.project_type === "game" ? "- phaser: ^3.86.0" : ""}
 
 Return ONLY the raw JSON content of package.json. No markdown, no explanation.`;
 }
@@ -80,336 +93,613 @@ Return ONLY the raw JSON content of package.json. No markdown, no explanation.`;
 // ─── Step 2: Config files ─────────────────────────────────────────────────────
 
 export function getConfigFilesPrompt(q: ProjectQuestionnaire): string {
-  return `Generate config files for this project. Return a JSON object where every key is the FULL file path from project root and values are complete file contents.
+  const t = tsx(q);
+  return `Generate configuration files for this project.
 
 ${stackSummary(q)}
 
-Generate ALL of these files (use the exact paths shown):
-${q.framework === "nextjs" ? `- "next.config.ts" — Next.js config with any needed plugins
-- "tsconfig.json" — TypeScript config with paths alias (@/*)
-- "postcss.config.mjs" — PostCSS config${q.styling === "tailwind" ? " with Tailwind" : ""}
-${q.styling === "tailwind" ? `- "tailwind.config.ts" — Tailwind config with content paths src/**/*.{ts,tsx}` : ""}` : ""}
-${q.framework === "astro" ? `- "astro.config.mjs"
-- "tsconfig.json"` : ""}
-${q.framework === "remix" ? `- "remix.config.js"
-- "tsconfig.json"` : ""}
-${q.framework === "vue" ? `- "nuxt.config.ts"
-- "tsconfig.json"` : ""}
-- ".gitignore" — Include .env*, .env.local, node_modules, .next, dist, build, .DS_Store
-- ".eslintrc.json" — ESLint config for ${q.language}
-- ".prettierrc" — Prettier config
+Generate ALL of these files exactly as named:
+${q.framework === "nextjs" ? `- "next.config.ts" — Next.js 15 config. If Payload CMS, import withPayload. Otherwise minimal config with images remotePatterns if cloudinary/supabase used.
+- "tsconfig.json" — TypeScript config. compilerOptions: target ES2017, lib [dom, dom.iterable, esnext], jsx preserve, strict true, moduleResolution bundler, paths {"@/*": ["./src/*"]}.
+- "postcss.config.mjs" — PostCSS config${q.styling === "tailwind" ? ` with @tailwindcss/postcss plugin` : ""}.
+${q.styling === "tailwind" ? `- "src/app/globals.css" — Tailwind v4: @import "tailwindcss"; then CSS custom properties for theme colors, fonts, spacing based on the ${q.design_style} design style and ${q.color_scheme} color scheme.` : ""}` : ""}
+${q.framework === "astro" ? `- "astro.config.mjs" — Astro config
+- "tsconfig.json" — TypeScript config for Astro` : ""}
+${q.framework === "remix" ? `- "remix.config.js" — Remix config
+- "tsconfig.json" — TypeScript config for Remix` : ""}
+${q.framework === "vue" ? `- "nuxt.config.ts" — Nuxt 3 config
+- "tsconfig.json" — TypeScript config` : ""}
+- ".gitignore" — Include: .env .env.local .env*.local node_modules .next dist build out .DS_Store *.log .vercel
+- ".eslintrc.json" — ESLint for ${q.language} with next/core-web-vitals
+- ".prettierrc" — Prettier: semi true, singleQuote false, tabWidth 2, trailingComma es5
+${q.features?.includes("pwa") ? `- "public/manifest.json" — PWA manifest with name, short_name "${q.project_name}", icons array, theme_color, background_color, display standalone` : ""}
 
-Return a JSON object: { "full/path/filename": "complete content", ... }
-Return ONLY the JSON object. No markdown fences, no explanation.`;
+${jsonInstruction()}`;
 }
 
 // ─── Step 3: .env.example ─────────────────────────────────────────────────────
 
 export function getEnvExamplePrompt(q: ProjectQuestionnaire): string {
-  return `Generate a .env.example file for this project.
+  return `Generate a .env.example file for this project. This file is shown to developers so they know what to fill in.
 
 ${stackSummary(q)}
 
-Include ALL environment variables needed, grouped with comments:
-${q.database === "supabase" ? "# Supabase\nNEXT_PUBLIC_SUPABASE_URL=\nNEXT_PUBLIC_SUPABASE_ANON_KEY=\nSUPABASE_SERVICE_ROLE_KEY=" : ""}
-${q.database === "planetscale" || q.database === "prisma_postgres" ? "# Database\nDATABASE_URL=" : ""}
-${q.database === "mongodb" ? "# MongoDB\nMONGODB_URI=" : ""}
-${q.database === "firebase" ? "# Firebase\nNEXT_PUBLIC_FIREBASE_API_KEY=\nNEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=\nNEXT_PUBLIC_FIREBASE_PROJECT_ID=\nNEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=\nNEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=\nNEXT_PUBLIC_FIREBASE_APP_ID=" : ""}
-${q.auth === "nextauth" ? "# NextAuth\nNEXTAUTH_SECRET=\nNEXTAUTH_URL=http://localhost:3000\n# Add OAuth provider keys here e.g. GITHUB_CLIENT_ID=" : ""}
-${q.auth === "clerk" ? "# Clerk\nNEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=\nCLERK_SECRET_KEY=" : ""}
-${q.payments === "stripe" ? "# Stripe\nSTRIPE_SECRET_KEY=\nSTRIPE_WEBHOOK_SECRET=\nNEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=" : ""}
-${q.payments === "lemonsqueezy" ? "# Lemon Squeezy\nLEMONSQUEEZY_API_KEY=\nLEMONSQUEEZY_WEBHOOK_SECRET=" : ""}
-${q.cms === "payload" ? "# Payload CMS\nPAYLOAD_SECRET=\nDATABASE_URI=" : ""}
-${q.cms === "sanity" ? "# Sanity\nNEXT_PUBLIC_SANITY_PROJECT_ID=\nNEXT_PUBLIC_SANITY_DATASET=production\nSANITY_API_TOKEN=" : ""}
-${q.cms === "contentful" ? "# Contentful\nCONTENTFUL_SPACE_ID=\nCONTENTFUL_ACCESS_TOKEN=" : ""}
-${q.extra_apis.includes("cloudinary") ? "# Cloudinary\nCLOUDINARY_CLOUD_NAME=\nCLOUDINARY_API_KEY=\nCLOUDINARY_API_SECRET=" : ""}
-${q.extra_apis.includes("resend") ? "# Resend\nRESEND_API_KEY=" : ""}
-${q.extra_apis.includes("openai") ? "# OpenAI\nOPENAI_API_KEY=" : ""}
-${q.extra_apis.includes("anthropic") ? "# Anthropic\nANTHROPIC_API_KEY=" : ""}
-${q.extra_apis.includes("mapbox") ? "# Mapbox\nNEXT_PUBLIC_MAPBOX_TOKEN=" : ""}
-${q.extra_apis.includes("pusher") ? "# Pusher\nPUSHER_APP_ID=\nPUSHER_KEY=\nPUSHER_SECRET=\nPUSHER_CLUSTER=" : ""}
-${q.extra_apis.includes("algolia") ? "# Algolia\nNEXT_PUBLIC_ALGOLIA_APP_ID=\nNEXT_PUBLIC_ALGOLIA_SEARCH_KEY=\nALGOLIA_ADMIN_KEY=" : ""}
-${q.extra_apis.includes("twilio") ? "# Twilio\nTWILIO_ACCOUNT_SID=\nTWILIO_AUTH_TOKEN=\nTWILIO_PHONE_NUMBER=" : ""}
+Include ALL of these environment variable groups, each with a comment explaining the service and where to get the keys:
+
+${q.database === "supabase" ? `# Supabase — https://supabase.com/dashboard → Project Settings → API
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=` : ""}
+${q.database === "planetscale" || q.database === "prisma_postgres" ? `# Database — Your Postgres/PlanetScale connection string
+DATABASE_URL=` : ""}
+${q.database === "mongodb" ? `# MongoDB — https://mongodb.com/atlas → Connect → Drivers
+MONGODB_URI=` : ""}
+${q.database === "firebase" ? `# Firebase — https://console.firebase.google.com → Project Settings → General
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=` : ""}
+${q.auth === "nextauth" ? `# NextAuth — Generate secret: openssl rand -base64 32
+NEXTAUTH_SECRET=
+NEXTAUTH_URL=http://localhost:3000` : ""}
+${q.auth === "clerk" ? `# Clerk — https://dashboard.clerk.com → API Keys
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up` : ""}
+${q.payments === "stripe" ? `# Stripe — https://dashboard.stripe.com/apikeys
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=` : ""}
+${q.payments === "lemonsqueezy" ? `# Lemon Squeezy — https://app.lemonsqueezy.com/settings/api
+LEMONSQUEEZY_API_KEY=
+LEMONSQUEEZY_WEBHOOK_SECRET=
+LEMONSQUEEZY_STORE_ID=` : ""}
+${q.cms === "payload" ? `# Payload CMS — Generate: openssl rand -base64 32
+PAYLOAD_SECRET=
+DATABASE_URI=` : ""}
+${q.cms === "sanity" ? `# Sanity — https://sanity.io/manage → Project → API
+NEXT_PUBLIC_SANITY_PROJECT_ID=
+NEXT_PUBLIC_SANITY_DATASET=production
+SANITY_API_TOKEN=` : ""}
+${q.cms === "contentful" ? `# Contentful — https://app.contentful.com → Settings → API Keys
+CONTENTFUL_SPACE_ID=
+CONTENTFUL_ACCESS_TOKEN=
+CONTENTFUL_PREVIEW_ACCESS_TOKEN=` : ""}
+${q.extra_apis?.includes("cloudinary") ? `# Cloudinary — https://cloudinary.com/console
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=` : ""}
+${q.extra_apis?.includes("resend") ? `# Resend — https://resend.com/api-keys
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=noreply@yourdomain.com` : ""}
+${q.extra_apis?.includes("openai") ? `# OpenAI — https://platform.openai.com/api-keys
+OPENAI_API_KEY=` : ""}
+${q.extra_apis?.includes("anthropic") ? `# Anthropic — https://console.anthropic.com/settings/keys
+ANTHROPIC_API_KEY=` : ""}
+${q.extra_apis?.includes("mapbox") ? `# Mapbox — https://account.mapbox.com/access-tokens
+NEXT_PUBLIC_MAPBOX_TOKEN=` : ""}
+${q.extra_apis?.includes("pusher") ? `# Pusher — https://dashboard.pusher.com/apps
+PUSHER_APP_ID=
+NEXT_PUBLIC_PUSHER_KEY=
+PUSHER_SECRET=
+NEXT_PUBLIC_PUSHER_CLUSTER=eu` : ""}
+${q.extra_apis?.includes("algolia") ? `# Algolia — https://dashboard.algolia.com/account/api-keys
+NEXT_PUBLIC_ALGOLIA_APP_ID=
+NEXT_PUBLIC_ALGOLIA_SEARCH_KEY=
+ALGOLIA_ADMIN_KEY=` : ""}
+${q.extra_apis?.includes("twilio") ? `# Twilio — https://console.twilio.com
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_PHONE_NUMBER=` : ""}
 
 # App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+NODE_ENV=development
 
-Add a comment above each group explaining what the service does and where to get the keys.
-Return ONLY the .env.example content. No markdown fences.`;
+Return ONLY the .env.example content. No markdown fences, no extra text.`;
 }
 
 // ─── Step 4: Database schema ──────────────────────────────────────────────────
 
 export function getDatabaseSchemaPrompt(q: ProjectQuestionnaire): string {
   if (q.database === "supabase") {
-    return `Generate a complete Supabase SQL schema file at path "supabase/schema.sql" for this project.
+    return `Generate a complete Supabase SQL schema for a ${q.project_type} application.
 
 ${stackSummary(q)}
 
-Include:
-- All tables needed for a ${q.project_type} application
-- uuid-ossp extension
-- profiles table linked to auth.users with trigger to auto-create on signup
-- Row Level Security (RLS) enabled on every table with appropriate policies
+Requirements:
+- Enable uuid-ossp extension
+- profiles table (id uuid references auth.users, email text, full_name text, avatar_url text, created_at timestamptz, updated_at timestamptz)
+- Trigger: auto-create profile row on auth.users insert
+- All tables needed for a ${q.project_type} app — think about what data models this needs
+- Row Level Security (RLS) enabled on every table with correct policies
 - Indexes on all foreign key columns
-- Any helper functions (e.g. increment counters, check limits)
-- Useful enums
+- created_at / updated_at columns on all tables
+- Useful enums for status fields
 
-Return ONLY the SQL content. No markdown fences, no explanation.`;
+Return ONLY the SQL. No markdown fences.`;
   }
 
   if (q.database === "prisma_postgres" || q.database === "planetscale") {
-    return `Generate a complete Prisma schema at path "prisma/schema.prisma" for this project.
+    return `Generate a complete Prisma schema for a ${q.project_type} application.
 
 ${stackSummary(q)}
 
-Include:
-- generator client and datasource db blocks
-- All models needed for a ${q.project_type} application
-- Proper @relation annotations
-- Enums where appropriate
-- @@index on foreign keys
-- createdAt/updatedAt on all models
+Requirements:
+- generator client block with output = "../node_modules/.prisma/client"
+- datasource db block with provider = "${q.database === "planetscale" ? "mysql" : "postgresql"}" and url = env("DATABASE_URL")
+- All models for a ${q.project_type} app
+- User model with id, email, name, createdAt, updatedAt
+- Proper @relation annotations, @@index on foreign keys
+- Enums for status/type fields
+- @default(now()) createdAt, @updatedAt updatedAt on all models
 
 Return ONLY the Prisma schema content. No markdown fences.`;
   }
 
   if (q.database === "mongodb") {
-    return `Generate Mongoose model files for this project as a JSON object with full file paths as keys.
+    return `Generate Mongoose model files for a ${q.project_type} application as a JSON object.
 
 ${stackSummary(q)}
 
-Generate all models needed for a ${q.project_type} app. Use paths like "src/models/User.ts".
-Each model file should export a Mongoose model with proper TypeScript types.
+Generate all models needed. Each model file at "src/models/ModelName.ts" must:
+- Define a TypeScript interface
+- Create a Mongoose schema with proper types
+- Add timestamps: true
+- Export the model with proper typing to prevent re-compilation in dev
 
-Return a JSON object: { "src/models/ModelName.ts": "complete content", ... }
-Return ONLY the JSON object. No markdown fences.`;
+${jsonInstruction()}`;
   }
 
   if (q.database === "firebase") {
-    return `Generate Firebase config files for this project as a JSON object.
+    return `Generate Firebase config files for a ${q.project_type} application.
 
 ${stackSummary(q)}
 
 Generate:
-- "firestore.rules" — Security rules for a ${q.project_type} app
-- "src/lib/firebase.ts" — Firebase initialization and exports
+- "firestore.rules" — Firestore security rules appropriate for a ${q.project_type} app
+- "src/lib/firebase.ts" — Firebase app initialization, auth, firestore, storage exports
 
-Return a JSON object: { "filepath": "content", ... }
-Return ONLY the JSON object. No markdown fences.`;
+${jsonInstruction()}`;
   }
 
   return "";
 }
 
-// ─── Step 5: Core app files ───────────────────────────────────────────────────
+// ─── Step 5a: Root app files (layout, page, globals, middleware) ──────────────
 
-export function getCoreFilesPrompt(q: ProjectQuestionnaire): string {
-  const e = ext(q);
+export function getRootFilesPrompt(q: ProjectQuestionnaire): string {
   const t = tsx(q);
+  const e = ext(q);
 
   const files: string[] = [];
 
   if (q.framework === "nextjs") {
-    files.push(
-      `"src/app/layout.${t}" — Root layout. Include metadata, Inter font from next/font/google, body with children. ${q.styling === "tailwind" ? "Import globals.css." : ""} ${q.auth === "clerk" ? "Wrap with ClerkProvider." : ""}`,
-      `"src/app/globals.css" — ${q.styling === "tailwind" ? "Tailwind v4 @import, base styles, CSS custom properties for colors/fonts." : "Base CSS reset and global styles."}`,
-      `"src/app/page.${t}" — Homepage for a ${q.project_type} app. Real content relevant to: ${q.description}. Include hero section, features, CTA.`,
-      `"src/app/not-found.${t}" — 404 page with link back home.`,
-      `"src/lib/utils.${e}" — cn() helper using clsx + tailwind-merge, formatDate, formatCurrency utilities.`,
-    );
+    files.push(`"src/app/layout.${t}":
+  - Root layout component. Import Inter from next/font/google.
+  - Set metadata: title "${q.project_name}", description from the project description.
+  - HTML structure: <html lang="en"><body className={inter.className}>{children}</body></html>
+  ${q.styling === "tailwind" ? "- Import './globals.css'" : ""}
+  ${q.auth === "clerk" ? "- Wrap children with <ClerkProvider>" : ""}
+  ${q.features?.includes("analytics") ? "- Include <Analytics /> from @vercel/analytics/react" : ""}
+  ${q.color_scheme === "system_toggle" ? "- Include ThemeProvider wrapper for dark/light toggle" : ""}`);
+
+    files.push(`"src/app/not-found.${t}":
+  - 404 page with a friendly message
+  - Link back to homepage
+  - Styled consistently with the ${q.design_style} design style`);
+
+    files.push(`"src/app/page.${t}":
+  - Homepage for a ${q.project_type} application
+  - Content specifically about: ${q.description}
+  - Include: hero section with headline + CTA button, features/benefits section (3-6 items), second CTA section
+  - Fully styled with ${q.styling} using ${q.design_style} design and ${q.color_scheme} color scheme
+  - Real copy relevant to the project — not placeholder Lorem ipsum`);
 
     if (q.auth !== "none") {
-      files.push(
-        `"src/app/(auth)/login/page.${t}" — Sign in page with email/password form. Handles ${q.auth} sign in.`,
-        `"src/app/(auth)/signup/page.${t}" — Sign up page with name, email, password. Handles ${q.auth} signup.`,
-      );
+      files.push(`"src/app/(auth)/login/page.${t}":
+  - Sign-in form with email + password fields
+  - Form submission calls ${q.auth} sign-in
+  - Link to signup page
+  - Error display on invalid credentials
+  - Styled consistently`);
+
+      files.push(`"src/app/(auth)/signup/page.${t}":
+  - Registration form with name, email, password fields
+  - Form submission calls ${q.auth} sign-up
+  - Link to login page
+  - Styled consistently`);
     }
 
-    if (q.database === "supabase") {
-      files.push(
-        `"src/lib/supabase/client.${e}" — Supabase browser client using createBrowserClient from @supabase/ssr.`,
-        `"src/lib/supabase/server.${e}" — Supabase server client using createServerClient from @supabase/ssr with Next.js cookies().`,
-      );
-    }
-
-    if (q.database === "prisma_postgres" || q.database === "planetscale") {
-      files.push(`"src/lib/db.${e}" — Prisma client singleton with global caching for development hot reload.`);
-    }
-
-    if (q.database === "mongodb") {
-      files.push(`"src/lib/mongodb.${e}" — MongoDB connection singleton using mongoose with global caching.`);
-    }
-
-    if (q.payments === "stripe") {
-      files.push(`"src/lib/stripe.${e}" — Stripe client singleton, lazy-initialized. Export getStripe() function.`);
-    }
-
-    if (q.extra_apis.includes("resend")) {
-      files.push(`"src/lib/email.${e}" — Resend client and sendEmail() helper function.`);
-    }
-
-    if (q.extra_apis.includes("openai")) {
-      files.push(`"src/lib/openai.${e}" — OpenAI client singleton.`);
-    }
-
-    if (q.extra_apis.includes("anthropic")) {
-      files.push(`"src/lib/anthropic.${e}" — Anthropic client singleton.`);
-    }
-
-    if (q.extra_apis.includes("cloudinary")) {
-      files.push(`"src/lib/cloudinary.${e}" — Cloudinary config and upload helper.`);
-    }
-
-    if (q.auth === "nextauth") {
-      files.push(`"src/lib/auth.${e}" — NextAuth config with providers, callbacks, session strategy.`);
-    }
-
-    // Project-type specific pages
-    if (q.project_type === "saas") {
-      files.push(
-        `"src/app/dashboard/page.${t}" — Protected dashboard page with stats overview.`,
-        `"src/app/dashboard/layout.${t}" — Dashboard layout with sidebar navigation.`,
-      );
-    } else if (q.project_type === "ecommerce") {
-      files.push(
-        `"src/app/products/page.${t}" — Products listing page with grid layout.`,
-        `"src/app/products/[slug]/page.${t}" — Product detail page.`,
-        `"src/app/cart/page.${t}" — Shopping cart page.`,
-      );
-    } else if (q.project_type === "blog") {
-      files.push(
-        `"src/app/blog/page.${t}" — Blog listing page with post cards.`,
-        `"src/app/blog/[slug]/page.${t}" — Blog post detail page.`,
-      );
-    } else if (q.project_type === "photography") {
-      files.push(
-        `"src/app/gallery/page.${t}" — Photography gallery with masonry/grid layout.`,
-        `"src/app/gallery/[album]/page.${t}" — Individual album/gallery page.`,
-      );
-    } else if (q.project_type === "dashboard") {
-      files.push(
-        `"src/app/dashboard/page.${t}" — Main dashboard with data visualisation placeholders.`,
-        `"src/app/dashboard/layout.${t}" — Dashboard layout with sidebar.`,
-      );
-    } else if (q.project_type === "portfolio") {
-      files.push(
-        `"src/app/work/page.${t}" — Portfolio/work listing page.`,
-        `"src/app/work/[slug]/page.${t}" — Individual project case study.`,
-        `"src/app/about/page.${t}" — About page.`,
-      );
-    }
-
-    // Proxy/middleware for auth
     if (q.auth === "supabase_auth" || q.auth === "nextauth" || q.auth === "clerk") {
-      files.push(`"src/middleware.${e}" — Middleware to protect dashboard/account routes. Redirect unauthenticated users to /login.`);
+      files.push(`"src/middleware.${e}":
+  - Protect routes: /dashboard/*, /account/*, /admin/*
+  - Redirect unauthenticated users to /login
+  - Use ${q.auth === "clerk" ? "clerkMiddleware from @clerk/nextjs/server" : q.auth === "nextauth" ? "withAuth from next-auth/middleware" : "createServerClient from @supabase/ssr to check session"}`);
+    }
+
+    if (q.auth === "supabase_auth") {
+      files.push(`"src/app/auth/callback/route.${e}":
+  - Exchange Supabase auth code for session
+  - Redirect to /dashboard on success`);
     }
   }
 
   if (q.framework === "astro") {
     files.push(
-      `"src/layouts/Layout.astro" — Base layout with head, nav, footer.`,
-      `"src/pages/index.astro" — Homepage for a ${q.project_type} site.`,
-      `"src/styles/global.css" — Global styles.`,
+      `"src/layouts/Layout.astro" — Base layout with <head> (meta, title, fonts), nav slot, <main>, footer`,
+      `"src/pages/index.astro" — Homepage for ${q.project_type} with hero and features sections`,
+      `"src/styles/global.css" — CSS reset, custom properties, base styles`
     );
   }
 
   if (q.framework === "remix") {
     files.push(
-      `"app/root.tsx" — Remix root with Links, Meta, Scripts, Outlet.`,
-      `"app/routes/_index.tsx" — Homepage.`,
-      `"app/styles/global.css" — Global styles.`,
+      `"app/root.tsx" — Remix root with Links, Meta, Scripts, Outlet, global error boundary`,
+      `"app/routes/_index.tsx" — Homepage for ${q.project_type}`,
+      `"app/styles/global.css" — Global styles`
     );
   }
 
-  return `Generate these core application files as a JSON object. Keys are FULL file paths from project root, values are complete file contents.
+  return `Generate root/layout application files as a JSON object. Keys = FULL file paths from project root. Values = complete file contents.
 
 ${stackSummary(q)}
 
 Files to generate:
-${files.map(f => `- ${f}`).join("\n")}
+${files.map(f => `- ${f}`).join("\n\n")}
 
-IMPORTANT:
-- Every file must be complete and functional — no truncation, no "// TODO", no placeholders
-- Use correct imports with the @/ path alias for internal modules
-- Make the homepage and pages genuinely useful for a ${q.project_type} project about: ${q.description}
+Every file must be 100% complete and functional. Use ${q.styling === "tailwind" ? "Tailwind CSS classes" : q.styling} for styling.
 
-Return a JSON object: { "full/path/file.tsx": "complete content", ... }
-Return ONLY the JSON object. No markdown fences, no explanation.`;
+${jsonInstruction()}`;
 }
 
-// ─── Step 6: Components ───────────────────────────────────────────────────────
+// ─── Step 5b: Lib/utility files ───────────────────────────────────────────────
 
-export function getComponentsPrompt(q: ProjectQuestionnaire): string {
-  const t = tsx(q);
+export function getLibFilesPrompt(q: ProjectQuestionnaire): string {
   const e = ext(q);
+  const files: string[] = [];
 
-  const files: string[] = [
-    `"src/components/ui/Button.${t}" — Reusable Button with variants (primary, secondary, outline, ghost, destructive), sizes (sm, md, lg), loading state.`,
-    `"src/components/ui/Card.${t}" — Card component with CardHeader, CardContent, CardFooter sub-components.`,
-    `"src/components/ui/Input.${t}" — Input component with label, error state, helper text.`,
-    `"src/components/ui/Badge.${t}" — Badge/tag component with color variants.`,
-    `"src/components/ui/Modal.${t}" — Modal/dialog component with backdrop, close button.`,
-    `"src/components/layout/Navbar.${t}" — Top navigation with logo, links, ${q.auth !== "none" ? "auth state (login/logout/avatar)" : "CTA button"}.`,
-    `"src/components/layout/Footer.${t}" — Footer with links, copyright.`,
-  ];
+  files.push(`"src/lib/utils.${e}":
+  - cn() function using clsx + tailwind-merge
+  - formatDate(date: string | Date): string — human-readable date
+  - formatCurrency(amount: number, currency?: string): string — locale currency format
+  - slugify(text: string): string — convert to URL-safe slug
+  - truncate(text: string, maxLength: number): string`);
 
-  if (q.project_type === "ecommerce") {
+  if (q.database === "supabase") {
     files.push(
-      `"src/components/products/ProductCard.${t}" — Product card with image, name, price, add-to-cart button.`,
-      `"src/components/products/ProductGrid.${t}" — Responsive product grid.`,
-      `"src/components/cart/CartItem.${t}" — Cart item with quantity controls and remove button.`,
-      `"src/components/cart/CartSummary.${t}" — Order summary with subtotal, checkout button.`,
+      `"src/lib/supabase/client.${e}" — createBrowserClient from @supabase/ssr. Export createClient() for browser.`,
+      `"src/lib/supabase/server.${e}" — createServerClient from @supabase/ssr with Next.js cookies(). Export async createClient().`
+    );
+  }
+
+  if (q.database === "prisma_postgres" || q.database === "planetscale") {
+    files.push(`"src/lib/db.${e}" — PrismaClient singleton. Use global var to prevent multiple instances in dev hot reload. Export db.`);
+  }
+
+  if (q.database === "mongodb") {
+    files.push(`"src/lib/mongodb.${e}" — Mongoose connection singleton. Cache connection in global. Export connectDB() async function.`);
+  }
+
+  if (q.payments === "stripe") {
+    files.push(`"src/lib/stripe.${e}" — Server-side Stripe client: export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {apiVersion: "2024-10-28"}). Also export getStripePublic() for client-side.`);
+  }
+
+  if (q.auth === "nextauth") {
+    files.push(`"src/lib/auth.${e}" — NextAuth v5 config. Providers: Credentials (email/password), GitHub, Google. Callbacks: session, jwt. Pages: {signIn: "/login"}. Export { auth, handlers, signIn, signOut }.`);
+  }
+
+  if (q.extra_apis?.includes("resend")) {
+    files.push(`"src/lib/email.${e}" — Resend client. Export sendEmail({to, subject, html}) async function with error handling.`);
+  }
+
+  if (q.extra_apis?.includes("openai")) {
+    files.push(`"src/lib/openai.${e}" — OpenAI client singleton. Export openai instance.`);
+  }
+
+  if (q.extra_apis?.includes("anthropic")) {
+    files.push(`"src/lib/anthropic.${e}" — Anthropic client singleton. Export anthropic instance.`);
+  }
+
+  if (q.extra_apis?.includes("cloudinary")) {
+    files.push(`"src/lib/cloudinary.${e}" — Configure cloudinary v2 with env vars. Export uploadImage(file: File) async helper returning secure_url.`);
+  }
+
+  if (q.features?.includes("dark_mode") || q.color_scheme === "system_toggle") {
+    files.push(`"src/lib/theme.${e}" — ThemeProvider component using next-themes or localStorage. Export ThemeProvider and useTheme hook.`);
+  }
+
+  if (files.length === 0) return "";
+
+  return `Generate lib/utility files as a JSON object. Keys = FULL file paths from project root. Values = complete file contents.
+
+${stackSummary(q)}
+
+Files to generate:
+${files.map(f => `- ${f}`).join("\n\n")}
+
+All files must be complete and production-quality.
+
+${jsonInstruction()}`;
+}
+
+// ─── Step 5c: Feature pages ───────────────────────────────────────────────────
+
+export function getFeaturePagesPrompt(q: ProjectQuestionnaire): string {
+  const t = tsx(q);
+  const files: string[] = [];
+
+  if (q.framework !== "nextjs") return "";
+
+  if (q.project_type === "saas" || q.project_type === "dashboard") {
+    files.push(
+      `"src/app/dashboard/layout.${t}" — Dashboard layout. Renders <Sidebar /> on left, <main> on right. Fetches current user from ${q.database === "supabase" ? "Supabase" : "database"}. Redirects to /login if not authenticated.`,
+      `"src/app/dashboard/page.${t}" — Main dashboard. Shows welcome message, stats grid (4 StatsCards), recent activity table. Real data fetched from DB.`,
+      `"src/app/account/page.${t}" — User account/profile settings page. Form to update name, email, avatar.`,
+    );
+    if (q.payments !== "none") {
+      files.push(`"src/app/pricing/page.${t}" — Pricing page with 3 plan cards. Each has a "Subscribe" button that hits the checkout API.`);
+    }
+  } else if (q.project_type === "ecommerce" || q.project_type === "marketplace") {
+    files.push(
+      `"src/app/products/page.${t}" — Products listing page. Fetches products from DB. Renders <ProductGrid>. Includes filter sidebar (category, price range).`,
+      `"src/app/products/[slug]/page.${t}" — Product detail page. Shows image gallery, name, price, description, add-to-cart button.`,
+      `"src/app/cart/page.${t}" — Shopping cart. Lists <CartItem> for each item. Shows <CartSummary>. Checkout button hits payment API.`,
+    );
+  } else if (q.project_type === "blog") {
+    files.push(
+      `"src/app/blog/page.${t}" — Blog index. Fetches posts. Renders grid of <PostCard> components. Includes category filter.`,
+      `"src/app/blog/[slug]/page.${t}" — Post detail. Renders <PostHeader>, post body content, author bio, related posts.`,
     );
   } else if (q.project_type === "photography") {
     files.push(
-      `"src/components/gallery/GalleryGrid.${t}" — Masonry/CSS grid photo gallery.`,
-      `"src/components/gallery/PhotoCard.${t}" — Individual photo card with hover overlay.`,
-      `"src/components/gallery/Lightbox.${t}" — Full-screen lightbox with prev/next navigation.`,
-    );
-  } else if (q.project_type === "saas" || q.project_type === "dashboard") {
-    files.push(
-      `"src/components/dashboard/Sidebar.${t}" — Collapsible sidebar with nav items, active states.`,
-      `"src/components/dashboard/StatsCard.${t}" — Metric card with value, label, trend indicator.`,
-      `"src/components/dashboard/DataTable.${t}" — Sortable, paginated data table.`,
-    );
-    if (q.payments !== "none") {
-      files.push(`"src/components/pricing/PricingCard.${t}" — Pricing plan card with features list, CTA.`);
-    }
-  } else if (q.project_type === "blog") {
-    files.push(
-      `"src/components/blog/PostCard.${t}" — Blog post preview card with title, excerpt, date, author.`,
-      `"src/components/blog/PostHeader.${t}" — Post detail header with title, metadata, cover image.`,
+      `"src/app/gallery/page.${t}" — Gallery index. Shows all albums as cards with cover photo, title, photo count.`,
+      `"src/app/gallery/[album]/page.${t}" — Album detail. Renders <GalleryGrid> with all photos. Clicking a photo opens <Lightbox>.`,
     );
   } else if (q.project_type === "portfolio") {
     files.push(
-      `"src/components/portfolio/ProjectCard.${t}" — Portfolio project card with image, title, tags.`,
-      `"src/components/portfolio/SkillBadge.${t}" — Technology/skill badge component.`,
+      `"src/app/work/page.${t}" — Portfolio projects listing. Grid of <ProjectCard> components.`,
+      `"src/app/work/[slug]/page.${t}" — Case study detail with cover image, description, tech stack, live link.`,
+      `"src/app/about/page.${t}" — About page with bio, skills, experience timeline, contact CTA.`,
+    );
+  } else if (q.project_type === "social" || q.project_type === "forum") {
+    files.push(
+      `"src/app/feed/page.${t}" — Main feed with posts/threads list.`,
+      `"src/app/feed/[id]/page.${t}" — Single post/thread detail with comments.`,
+      `"src/app/profile/[username]/page.${t}" — User profile page.`,
+    );
+  } else if (q.project_type === "booking") {
+    files.push(
+      `"src/app/services/page.${t}" — Services/offerings listing page.`,
+      `"src/app/booking/page.${t}" — Booking form with date picker, time slots, service selection.`,
+      `"src/app/dashboard/page.${t}" — Provider dashboard showing upcoming bookings.`,
+    );
+  } else if (q.project_type === "directory") {
+    files.push(
+      `"src/app/listings/page.${t}" — Directory listings with search and filter.`,
+      `"src/app/listings/[slug]/page.${t}" — Individual listing detail page.`,
+      `"src/app/submit/page.${t}" — Form to submit a new listing.`,
+    );
+  } else if (q.project_type === "game") {
+    files.push(
+      `"src/app/game/page.${t}" — Game page. Renders the Phaser.js game canvas in a client component. Loads the game config.`,
+      `"src/game/config.${ext(q)}" — Phaser game config object: type AUTO, parent 'game', scene list.`,
+      `"src/game/scenes/MainScene.${ext(q)}" — Main Phaser scene class extending Phaser.Scene. Implements preload(), create(), update(). Full working game logic.`,
+    );
+  } else if (q.project_type === "landing") {
+    files.push(
+      `"src/app/page.${t}" — Enhanced landing page. Hero section, features grid, testimonials section (3 testimonials), pricing preview, FAQ accordion, newsletter signup, footer. All with real copy about: ${q.description}`,
     );
   }
 
-  if (q.extra_apis.includes("resend")) {
-    files.push(`"src/components/forms/ContactForm.${t}" — Contact form that submits to /api/contact. Includes name, email, message fields with validation.`);
+  // API backend
+  if (q.project_type === "api_backend") {
+    files.push(
+      `"src/app/api/v1/route.${ext(q)}" — API index with available endpoints list.`,
+      `"src/app/api/v1/[resource]/route.${ext(q)}" — Generic REST resource handler (GET list, POST create).`,
+      `"src/app/api/v1/[resource]/[id]/route.${ext(q)}" — Single resource handler (GET, PUT, DELETE).`,
+    );
   }
 
-  // Types file
-  files.push(`"src/types/index.${e}" — TypeScript interfaces and types for all data models used in the app (User, ${q.project_type === "ecommerce" ? "Product, Order, CartItem" : q.project_type === "blog" ? "Post, Author, Category" : q.project_type === "photography" ? "Photo, Album, Gallery" : "etc."}).`);
+  if (files.length === 0) return "";
 
-  return `Generate UI components for this project as a JSON object. Keys are FULL file paths from project root, values are complete file contents.
+  return `Generate feature/page files as a JSON object. Keys = FULL file paths from project root. Values = complete file contents.
 
 ${stackSummary(q)}
 
 Files to generate:
-${files.map(f => `- ${f}`).join("\n")}
+${files.map(f => `- ${f}`).join("\n\n")}
 
-IMPORTANT:
-- Every component must be complete — no truncation, no placeholders
-- Use ${q.styling === "tailwind" ? "Tailwind CSS classes" : q.styling === "css_modules" ? "CSS Modules (import styles from './Component.module.css', and generate that file too)" : q.styling} for all styling
-- Include proper TypeScript props interfaces
+Requirements:
+- Every file complete — no truncation, no placeholders
+- Pages should fetch real data from ${q.database !== "none" ? q.database : "local state or mock data"}
+- Use @/ path alias for all imports
+- Apply ${q.design_style} design style and ${q.color_scheme} color scheme consistently
+
+${jsonInstruction()}`;
+}
+
+// ─── Step 6a: UI primitive components ────────────────────────────────────────
+
+export function getUIPrimitivesPrompt(q: ProjectQuestionnaire): string {
+  const t = tsx(q);
+
+  return `Generate UI primitive components as a JSON object.
+
+${stackSummary(q)}
+
+Generate these 5 files exactly:
+
+- "src/components/ui/Button.${t}":
+  Props: variant (primary|secondary|outline|ghost|destructive), size (sm|md|lg), loading (boolean), disabled, onClick, href, children, className
+  If href provided, render as <a> or Next.js <Link>
+  Loading state: spinner icon + disabled
+  Full TypeScript props interface
+
+- "src/components/ui/Card.${t}":
+  Sub-components: Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter
+  Each accepts className prop
+  Proper TypeScript interfaces
+
+- "src/components/ui/Input.${t}":
+  Props: label, error, helperText, type, placeholder, value, onChange, name, id, required, disabled, className
+  Shows red border + error message when error prop set
+  Full TypeScript interface
+
+- "src/components/ui/Badge.${t}":
+  Props: variant (default|success|warning|danger|info|outline), size (sm|md), children, className
+  Color variants actually implemented with ${q.styling === "tailwind" ? "Tailwind classes" : "CSS"}
+
+- "src/components/ui/Modal.${t}":
+  Props: open, onClose, title, children, size (sm|md|lg)
+  Backdrop click closes modal
+  Escape key closes modal
+  useEffect for keyboard listener
+  Portal or fixed positioning
+
+All styled with ${q.styling === "tailwind" ? "Tailwind CSS" : q.styling}. Match the ${q.design_style} design style.
+
+${jsonInstruction()}`;
+}
+
+// ─── Step 6b: Layout components ───────────────────────────────────────────────
+
+export function getLayoutComponentsPrompt(q: ProjectQuestionnaire): string {
+  const t = tsx(q);
+
+  return `Generate layout components as a JSON object.
+
+${stackSummary(q)}
+
+Generate these files:
+
+- "src/components/layout/Navbar.${t}":
+  - Logo/brand name "${q.project_name}" on the left
+  - Navigation links relevant to a ${q.project_type} site
+  ${q.auth !== "none" ? `- Auth state: if logged in show user avatar + dropdown (profile, settings, sign out); if logged out show Login + Sign Up buttons` : "- CTA button on right"}
+  ${q.features?.includes("dark_mode") || q.color_scheme === "system_toggle" ? "- Dark/light mode toggle button" : ""}
+  - Mobile hamburger menu that opens a drawer/sheet
+  - Sticky on scroll
+
+- "src/components/layout/Footer.${t}":
+  - Logo + tagline
+  - 3-4 column links grid (Product, Company, Legal, Social)
+  - Copyright line with current year
+  - Social media icons (GitHub, Twitter/X, LinkedIn)
+
+${q.color_scheme === "system_toggle" ? `- "src/components/ui/ThemeToggle.${t}":
+  - Button that toggles between dark and light mode
+  - Sun/Moon icons (use lucide-react)
+  - Reads/writes to localStorage and applies class to document.documentElement` : ""}
+
+Styled with ${q.styling === "tailwind" ? "Tailwind CSS" : q.styling}. Match ${q.design_style} design style and ${q.color_scheme} color scheme.
+
+${jsonInstruction()}`;
+}
+
+// ─── Step 6c: Feature-specific components ────────────────────────────────────
+
+export function getFeatureComponentsPrompt(q: ProjectQuestionnaire): string {
+  const t = tsx(q);
+  const e = ext(q);
+
+  const files: string[] = [];
+
+  if (q.project_type === "ecommerce" || q.project_type === "marketplace") {
+    files.push(
+      `"src/components/products/ProductCard.${t}" — Product card. Props: id, name, price, image, slug, rating. Image with aspect-ratio container, name, price, star rating, "Add to Cart" button. Hover effects.`,
+      `"src/components/products/ProductGrid.${t}" — Responsive grid of ProductCards. Props: products array. CSS grid with responsive columns.`,
+      `"src/components/cart/CartItem.${t}" — Cart line item. Props: id, name, price, quantity, image, onRemove, onQuantityChange. Quantity +/- controls, remove button.`,
+      `"src/components/cart/CartSummary.${t}" — Order summary sidebar. Props: items[], onCheckout. Shows subtotal, tax, total. Checkout button.`,
+    );
+  } else if (q.project_type === "photography") {
+    files.push(
+      `"src/components/gallery/GalleryGrid.${t}" — CSS masonry/grid photo gallery. Props: photos[] with src, alt, width, height. Uses next/image. Click handler.`,
+      `"src/components/gallery/PhotoCard.${t}" — Single photo card with Next.js Image, hover overlay showing title.`,
+      `"src/components/gallery/Lightbox.${t}" — Full-screen lightbox. Props: photos[], currentIndex, isOpen, onClose, onPrev, onNext. Keyboard navigation (arrow keys, escape).`,
+    );
+  } else if (q.project_type === "saas" || q.project_type === "dashboard") {
+    files.push(
+      `"src/components/dashboard/Sidebar.${t}" — Collapsible sidebar. Props: items[] with label, href, icon. Highlights active route using usePathname. Collapse button. Icon-only mode when collapsed.`,
+      `"src/components/dashboard/StatsCard.${t}" — KPI metric card. Props: title, value, change (percent), trend (up|down|neutral), icon. Color-coded trend indicator.`,
+      `"src/components/dashboard/DataTable.${t}" — Generic sortable table. Props: columns[] with key+label+sortable, data[], onRowClick. Click column header to sort. Shows empty state.`,
+    );
+  } else if (q.project_type === "blog") {
+    files.push(
+      `"src/components/blog/PostCard.${t}" — Blog post preview. Props: title, slug, excerpt, publishedAt, author (name+avatar), coverImage, category. Links to /blog/[slug].`,
+      `"src/components/blog/PostHeader.${t}" — Post page header. Props: title, publishedAt, author, coverImage, readingTime, category. Large cover image, metadata row.`,
+    );
+  } else if (q.project_type === "portfolio") {
+    files.push(
+      `"src/components/portfolio/ProjectCard.${t}" — Portfolio project card. Props: title, description, image, tags[], liveUrl, githubUrl. Image hover zoom, tag badges, links.`,
+      `"src/components/portfolio/SkillBadge.${t}" — Technology skill badge. Props: name, icon?, level (beginner|intermediate|expert)?. Pill shape with color by level.`,
+    );
+  } else if (q.project_type === "social" || q.project_type === "forum") {
+    files.push(
+      `"src/components/feed/PostCard.${t}" — Social post or forum thread card. Props: author (name+avatar), content, createdAt, likes, replies, tags[]. Like button, reply count.`,
+      `"src/components/feed/CommentThread.${t}" — Nested comment list. Props: comments[] with id, author, content, createdAt, children[]. Recursive rendering.`,
+    );
+  } else if (q.project_type === "booking") {
+    files.push(
+      `"src/components/booking/DatePicker.${t}" — Calendar date picker component. Props: value, onChange, minDate, maxDate, disabledDates[]. Shows month grid, navigate months.`,
+      `"src/components/booking/TimeSlots.${t}" — Time slot selector. Props: slots[] with time+available, selectedSlot, onSelect. Grid of clickable time buttons.`,
+    );
+  } else if (q.project_type === "landing") {
+    files.push(
+      `"src/components/landing/HeroSection.${t}" — Hero with headline, subheadline, CTA buttons, hero image/illustration placeholder.`,
+      `"src/components/landing/FeaturesGrid.${t}" — Features grid. Props: features[] with icon, title, description. 3-column responsive grid.`,
+      `"src/components/landing/TestimonialsSection.${t}" — Customer testimonials. Props: testimonials[] with quote, author, title, avatar. Carousel or grid layout.`,
+    );
+  }
+
+  if (q.extra_apis?.includes("resend")) {
+    files.push(`"src/components/forms/ContactForm.${t}" — Contact form. Fields: name, email, subject, message. Client-side validation. Submits to /api/contact. Shows success/error state.`);
+  }
+
+  if (q.extra_apis?.includes("openai") || q.extra_apis?.includes("anthropic")) {
+    files.push(`"src/components/chat/ChatInterface.${t}" — Chat UI component. Messages list (user + assistant). Input box at bottom. Streams responses from /api/chat using fetch with ReadableStream.`);
+  }
+
+  if (q.features?.includes("search")) {
+    files.push(`"src/components/ui/SearchBar.${t}" — Search bar with debounced input. Props: onSearch, placeholder, isLoading. Shows loading spinner while searching.`);
+  }
+
+  if (q.features?.includes("file_upload")) {
+    files.push(`"src/components/ui/FileUpload.${t}" — Drag-and-drop file upload zone. Props: accept, maxSize, onUpload, multiple. Shows upload progress, preview for images.`);
+  }
+
+  // Types file always
+  files.push(`"src/types/index.${e}" — TypeScript interfaces for all data models: User, ${
+    q.project_type === "ecommerce" || q.project_type === "marketplace" ? "Product, Order, CartItem, Category" :
+    q.project_type === "blog" ? "Post, Author, Category, Comment" :
+    q.project_type === "photography" ? "Photo, Album, Gallery" :
+    q.project_type === "saas" || q.project_type === "dashboard" ? "UserProfile, Subscription, Analytics" :
+    q.project_type === "booking" ? "Service, Booking, TimeSlot, Provider" :
+    q.project_type === "forum" || q.project_type === "social" ? "Post, Comment, Profile, Thread" :
+    "ApiResponse, PaginatedResponse, ErrorResponse"
+  }. Export all as named types.`);
+
+  if (files.length === 0) {
+    files.push(`"src/types/index.${e}" — TypeScript interfaces for all data models used in this ${q.project_type} application.`);
+  }
+
+  return `Generate feature-specific components as a JSON object.
+
+${stackSummary(q)}
+
+Files to generate:
+${files.map(f => `- ${f}`).join("\n\n")}
+
+Requirements:
+- Every component complete — no truncation, no placeholders
+- ${q.styling === "tailwind" ? "Tailwind CSS classes for all styling" : q.styling + " for all styling"}
+- Proper TypeScript props interfaces with JSDoc if helpful
 - Import from @/ path alias
 
-Return a JSON object: { "full/path/Component.tsx": "complete content", ... }
-Return ONLY the JSON object. No markdown fences, no explanation.`;
+${jsonInstruction()}`;
 }
 
 // ─── Step 7: API routes ───────────────────────────────────────────────────────
@@ -420,145 +710,152 @@ export function getApiRoutesPrompt(q: ProjectQuestionnaire): string {
   const files: string[] = [];
 
   if (q.database === "supabase" && q.auth !== "none") {
-    files.push(`"src/app/api/auth/callback/route.${e}" — Supabase OAuth callback. Exchange code for session.`);
+    files.push(`"src/app/api/auth/callback/route.${e}" — Supabase OAuth callback. Exchange code for session using @supabase/ssr. Redirect to /dashboard on success.`);
+  }
+
+  if (q.auth === "nextauth") {
+    files.push(`"src/app/api/auth/[...nextauth]/route.${e}" — NextAuth handlers. Export { GET, POST } = handlers from @/lib/auth.`);
   }
 
   if (q.payments === "stripe") {
     files.push(
-      `"src/app/api/stripe/checkout/route.${e}" — Create Stripe Checkout Session. Accept price/plan in body, return {url}.`,
-      `"src/app/api/stripe/webhook/route.${e}" — Handle Stripe webhooks. Verify signature, handle checkout.session.completed, subscription events.`,
-      `"src/app/api/stripe/portal/route.${e}" — Create Stripe Customer Portal session for subscription management.`,
+      `"src/app/api/stripe/checkout/route.${e}" — Create Stripe Checkout Session. Accept {priceId, successUrl, cancelUrl} in body. Return {url}.`,
+      `"src/app/api/stripe/webhook/route.${e}" — Handle Stripe webhooks. Verify signature with stripe.webhooks.constructEvent. Handle checkout.session.completed: update user subscription. Handle customer.subscription.deleted.`,
+      `"src/app/api/stripe/portal/route.${e}" — Create Customer Portal session. Return {url}. For subscription management.`,
     );
   }
 
   if (q.payments === "lemonsqueezy") {
+    files.push(`"src/app/api/lemonsqueezy/webhook/route.${e}" — Lemon Squeezy webhook handler. Verify signature. Handle order_created, subscription_created, subscription_cancelled events.`);
+  }
+
+  if (q.extra_apis?.includes("resend")) {
+    files.push(`"src/app/api/contact/route.${e}" — POST /api/contact. Validate name, email, message. Send email via Resend. Rate limit: 1 request per IP per minute. Return {success: true}.`);
+  }
+
+  if (q.extra_apis?.includes("openai")) {
+    files.push(`"src/app/api/chat/route.${e}" — POST /api/chat. Accept {messages: [{role, content}]}. Stream response using OpenAI streaming with ReadableStream. Set headers for SSE.`);
+  }
+
+  if (q.extra_apis?.includes("anthropic")) {
+    files.push(`"src/app/api/chat/route.${e}" — POST /api/chat. Accept {messages: [{role, content}]}. Stream response using Anthropic streaming. Return SSE stream.`);
+  }
+
+  if (q.features?.includes("file_upload") && q.extra_apis?.includes("cloudinary")) {
+    files.push(`"src/app/api/upload/route.${e}" — POST /api/upload. Accept multipart/form-data with file field. Upload to Cloudinary. Return {url, publicId}.`);
+  }
+
+  if (q.project_type === "ecommerce" || q.project_type === "marketplace") {
     files.push(
-      `"src/app/api/lemonsqueezy/webhook/route.${e}" — Handle Lemon Squeezy webhook events.`,
-    );
-  }
-
-  if (q.extra_apis.includes("resend")) {
-    files.push(`"src/app/api/contact/route.${e}" — Send contact form email via Resend. Validate input, send email, return success.`);
-  }
-
-  if (q.extra_apis.includes("openai")) {
-    files.push(`"src/app/api/chat/route.${e}" — OpenAI streaming chat completion endpoint using ReadableStream.`);
-  }
-
-  if (q.extra_apis.includes("anthropic")) {
-    files.push(`"src/app/api/chat/route.${e}" — Anthropic streaming chat completion endpoint using ReadableStream.`);
-  }
-
-  if (q.project_type === "ecommerce") {
-    files.push(
-      `"src/app/api/products/route.${e}" — GET list products, POST create product.`,
-      `"src/app/api/products/[id]/route.${e}" — GET, PUT, DELETE single product.`,
-      `"src/app/api/orders/route.${e}" — GET list orders, POST create order.`,
+      `"src/app/api/products/route.${e}" — GET: list products with pagination (?page, ?limit, ?category). POST: create product (admin only). Return {products, total, page}.`,
+      `"src/app/api/products/[id]/route.${e}" — GET single product. PUT update product. DELETE product. Auth checks.`,
+      `"src/app/api/orders/route.${e}" — GET user's orders. POST create order: validate cart, check stock, create order row, return order ID.`,
     );
   } else if (q.project_type === "blog") {
     files.push(
-      `"src/app/api/posts/route.${e}" — GET list posts, POST create post.`,
-      `"src/app/api/posts/[slug]/route.${e}" — GET single post by slug.`,
+      `"src/app/api/posts/route.${e}" — GET: list published posts (?page, ?category, ?search). POST: create post (authenticated).`,
+      `"src/app/api/posts/[slug]/route.${e}" — GET single post by slug, increment view count. PUT: update post. DELETE: delete post.`,
     );
   } else if (q.project_type === "saas" || q.project_type === "dashboard") {
     files.push(
-      `"src/app/api/user/route.${e}" — GET current user profile, PATCH update profile.`,
+      `"src/app/api/user/route.${e}" — GET: return current user profile from DB. PATCH: update name, avatar. Return updated profile.`,
+    );
+  } else if (q.project_type === "booking") {
+    files.push(
+      `"src/app/api/bookings/route.${e}" — GET user's bookings. POST create booking: check availability, create record, send confirmation email if Resend configured.`,
+      `"src/app/api/slots/route.${e}" — GET available time slots. Accept ?date, ?serviceId. Return array of {time, available}.`,
     );
   }
 
   if (files.length === 0) {
-    files.push(`"src/app/api/health/route.${e}" — Simple health check endpoint returning {status: "ok", timestamp}.`);
+    files.push(`"src/app/api/health/route.${e}" — GET /api/health. Return {status: "ok", timestamp: new Date().toISOString(), version: "1.0.0"}.`);
   }
 
-  return `Generate API route files for this Next.js project as a JSON object. Keys are FULL file paths, values are complete file contents.
+  return `Generate API route files as a JSON object. Keys = FULL file paths from project root. Values = complete file contents.
 
 ${stackSummary(q)}
 
 Files to generate:
-${files.map(f => `- ${f}`).join("\n")}
+${files.map(f => `- ${f}`).join("\n\n")}
 
-IMPORTANT:
-- All routes use Next.js App Router route handlers (export async function GET/POST/etc.)
-- Include proper error handling and status codes
-- Use TypeScript types for request/response
-- Validate input with proper checks
+Requirements:
+- Use Next.js App Router route handlers (export async function GET/POST/PUT/DELETE)
+- Return NextResponse.json() with correct HTTP status codes
+- Validate all inputs
+- Include proper error handling: try/catch, meaningful error messages
+- Use TypeScript types for request/response bodies
 
-Return a JSON object: { "full/path/route.ts": "complete content", ... }
-Return ONLY the JSON object. No markdown fences, no explanation.`;
+${jsonInstruction()}`;
 }
 
-// ─── Step 8: CMS config ───────────────────────────────────────────────────────
+// ─── Step 8: CMS files ────────────────────────────────────────────────────────
 
 export function getCMSFilesPrompt(q: ProjectQuestionnaire): string {
   const e = ext(q);
   const t = tsx(q);
 
   if (q.cms === "payload") {
-    return `Generate Payload CMS configuration files as a JSON object with FULL file paths as keys.
+    return `Generate Payload CMS v3 configuration files as a JSON object.
 
 ${stackSummary(q)}
 
-Generate ALL of these Payload CMS files:
-- "payload.config.ts" — Main Payload config with collections, db adapter (postgres or mongodb based on database choice: ${q.database}), secret from env
-- "src/collections/Users.ts" — Users collection with auth enabled
-- "src/collections/Media.ts" — Media/uploads collection
-${q.project_type === "blog" ? `- "src/collections/Posts.ts" — Blog posts collection with title, slug, content (richText), author, status, publishedAt` : ""}
-${q.project_type === "ecommerce" ? `- "src/collections/Products.ts" — Products collection with name, slug, description, price, images, inventory` : ""}
-${q.project_type === "photography" ? `- "src/collections/Photos.ts" — Photos collection with title, image, album, description\n- "src/collections/Albums.ts" — Albums collection` : ""}
-- "src/app/(payload)/admin/[[...segments]]/page.${t}" — Payload admin page
-- "src/app/(payload)/admin/[[...segments]]/not-found.${t}" — Payload admin not-found
-- "src/app/(payload)/api/[...slug]/route.${e}" — Payload API route handler
+Generate ALL of these files exactly:
+- "payload.config.ts" — Main config. Import buildConfig from payload. Collections: [Users, Media${q.project_type === "blog" ? ", Posts" : q.project_type === "ecommerce" ? ", Products" : ""}]. DB: ${q.database === "mongodb" ? "mongooseAdapter" : "postgresAdapter"} from appropriate @payloadcms package. secret from env("PAYLOAD_SECRET"). editor: lexicalEditor({}). serverURL from env.
+- "src/payload/collections/Users.ts" — Users collection. auth: true. fields: name, role (admin|user enum).
+- "src/payload/collections/Media.ts" — Media collection. upload: { staticDir: "public/media", mimeTypes: ["image/*", "video/*"] }.
+${q.project_type === "blog" ? `- "src/payload/collections/Posts.ts" — Posts collection. fields: title, slug (unique), content (richText with lexical), author (relationship to Users), status (draft|published), publishedAt, featuredImage (relationship to Media), categories.` : ""}
+${q.project_type === "ecommerce" ? `- "src/payload/collections/Products.ts" — Products collection. fields: name, slug, description, price (number), images (array of Media relationships), category, inventory (number), status.` : ""}
+${q.project_type === "photography" ? `- "src/payload/collections/Photos.ts" — Photos collection. fields: title, image (Media relationship), album, description.\n- "src/payload/collections/Albums.ts" — Albums collection. fields: title, slug, coverImage (Media relationship), description.` : ""}
+- "src/app/(payload)/admin/[[...segments]]/page.${t}" — import { RootPage, generatePageMetadata } from "@payloadcms/next/views"; export generatePageMetadata as generateMetadata; export RootPage as default.
+- "src/app/(payload)/admin/[[...segments]]/not-found.${t}" — import { NotFoundPage } from "@payloadcms/next/views"; export NotFoundPage as default.
+- "src/app/(payload)/api/[...slug]/route.${e}" — import { REST_DELETE, REST_GET, REST_OPTIONS, REST_PATCH, REST_POST, REST_PUT } from "@payloadcms/next/routes"; import config from "@payload-config"; export all handlers.
 
-Return a JSON object: { "full/path/file.ts": "complete content", ... }
-Return ONLY the JSON object. No markdown fences.`;
+${jsonInstruction()}`;
   }
 
   if (q.cms === "sanity") {
-    return `Generate Sanity CMS configuration files as a JSON object with FULL file paths as keys.
+    return `Generate Sanity v3 configuration files as a JSON object.
 
 ${stackSummary(q)}
 
 Generate:
-- "sanity.config.ts" — Sanity Studio config with project ID from env, dataset, schema
-- "sanity.cli.ts" — Sanity CLI config
-- "src/sanity/schemaTypes/index.ts" — Schema type index
-${q.project_type === "blog" ? `- "src/sanity/schemaTypes/post.ts" — Post schema with title, slug, body (block content), author, mainImage, publishedAt` : ""}
-${q.project_type === "photography" ? `- "src/sanity/schemaTypes/photo.ts" — Photo schema\n- "src/sanity/schemaTypes/album.ts" — Album schema` : ""}
-${q.project_type === "ecommerce" ? `- "src/sanity/schemaTypes/product.ts" — Product schema with name, slug, price, images, description` : ""}
-- "src/sanity/lib/client.ts" — Sanity client configured with projectId/dataset from env
-- "src/sanity/lib/queries.ts" — GROQ queries for fetching content
-- "src/sanity/lib/image.ts" — Image URL builder helper
-- "src/app/studio/[[...tool]]/page.${tsx(q)}" — Embedded Sanity Studio page
+- "sanity.config.ts" — defineConfig with projectId (env), dataset (env), plugins: [structureTool(), visionTool()], schema: { types: [...all schema types] }
+- "sanity.cli.ts" — defineCliConfig with api: { projectId, dataset }
+- "src/sanity/schemaTypes/index.ts" — Export array of all schema types
+${q.project_type === "blog" ? `- "src/sanity/schemaTypes/post.ts" — Post document type. Fields: title, slug (slug type with current), body (block content array for portable text), author (reference to author), mainImage, publishedAt, categories[]` : ""}
+${q.project_type === "photography" ? `- "src/sanity/schemaTypes/photo.ts" — Photo document type.\n- "src/sanity/schemaTypes/album.ts" — Album document type with photos array` : ""}
+${q.project_type === "ecommerce" ? `- "src/sanity/schemaTypes/product.ts" — Product document type with name, slug, price, images, description (portable text)` : ""}
+- "src/sanity/lib/client.ts" — createClient with projectId, dataset, apiVersion "2024-01-01", useCdn true
+- "src/sanity/lib/queries.ts" — GROQ queries: exported const strings for fetchAll${q.project_type === "blog" ? "Posts, fetchPost(slug)" : q.project_type === "ecommerce" ? "Products, fetchProduct(slug)" : "Items, fetchItem(slug)"}
+- "src/sanity/lib/image.ts" — imageUrl helper using @sanity/image-url. Export urlFor(source) function.
+- "src/app/studio/[[...tool]]/page.${tsx(q)}" — "use client"; import { NextStudio } from "next-sanity/studio"; import config. export default function StudioPage() { return <NextStudio config={config} /> }
 
-Return a JSON object: { "full/path/file.ts": "complete content", ... }
-Return ONLY the JSON object. No markdown fences.`;
+${jsonInstruction()}`;
   }
 
   if (q.cms === "contentful") {
-    return `Generate Contentful configuration files as a JSON object with FULL file paths as keys.
+    return `Generate Contentful integration files as a JSON object.
 
 ${stackSummary(q)}
 
 Generate:
-- "src/lib/contentful.${e}" — Contentful client setup using contentful package
-- "src/lib/contentful-types.${e}" — TypeScript types for Contentful content models
-- "src/lib/contentful-queries.${e}" — Helper functions to fetch entries (getEntries, getEntry, etc.)
+- "src/lib/contentful.${e}" — Contentful client: createClient({ space: process.env.CONTENTFUL_SPACE_ID!, accessToken: process.env.CONTENTFUL_ACCESS_TOKEN! }). Export client.
+- "src/lib/contentful-types.${e}" — TypeScript interfaces for Contentful entries: ContentfulPost, ContentfulProduct, etc. matching the ${q.project_type} app needs.
+- "src/lib/contentful-queries.${e}" — Helper functions: getEntries(contentType, options?), getEntry(id), getEntriesBySlug(contentType, slug). All async, return typed results.
 
-Return a JSON object: { "full/path/file.ts": "complete content", ... }
-Return ONLY the JSON object. No markdown fences.`;
+${jsonInstruction()}`;
   }
 
   if (q.cms === "wordpress") {
-    return `Generate WordPress headless API helper files as a JSON object with FULL file paths as keys.
+    return `Generate WordPress headless integration files as a JSON object.
 
 ${stackSummary(q)}
 
 Generate:
-- "src/lib/wordpress.${e}" — WordPress REST API client with helper functions (getPosts, getPost, getPages)
-- "src/lib/wordpress-types.${e}" — TypeScript types for WordPress REST API responses
+- "src/lib/wordpress.${e}" — WordPress REST API client. Base URL from env. Functions: getPosts(params?), getPost(slug), getPages(), getPage(slug), getCategories(), getTags(). All async with proper error handling and TypeScript return types.
+- "src/lib/wordpress-types.${e}" — TypeScript interfaces for WP REST API: WPPost, WPPage, WPCategory, WPTag, WPAuthor, WPMedia, WPEmbedded.
 
-Return a JSON object: { "full/path/file.ts": "complete content", ... }
-Return ONLY the JSON object. No markdown fences.`;
+${jsonInstruction()}`;
   }
 
   return "";
@@ -567,64 +864,101 @@ Return ONLY the JSON object. No markdown fences.`;
 // ─── Step 9: Public folder ────────────────────────────────────────────────────
 
 export function getPublicFilesPrompt(q: ProjectQuestionnaire): string {
-  return `Generate public folder files for this project as a JSON object with FULL file paths as keys.
+  return `Generate public folder files as a JSON object.
 
 ${stackSummary(q)}
 
-Generate:
-- "public/favicon.svg" — A simple SVG favicon appropriate for a ${q.project_type} project called "${q.project_name}". Use a simple, clean icon shape with the brand color.
-- "public/og-image.svg" — Open Graph image (1200x630 SVG) with the project name "${q.project_name}" and a clean design.
-- "public/robots.txt" — Standard robots.txt allowing all crawlers.
-- "public/sitemap.xml" — Basic sitemap.xml with homepage URL as https://example.com (user will update).
+Generate ALL of these files:
+- "public/favicon.svg" — SVG favicon. Simple, clean icon related to ${q.project_type}. Use a single path/shape. Size 32x32. Pick a brand color fitting the ${q.design_style} style.
+- "public/og-image.svg" — Open Graph image. Exactly 1200x630 SVG. Project name "${q.project_name}" in large text. Brief tagline. Clean background color fitting the ${q.color_scheme} scheme. Professional layout.
+- "public/robots.txt" — Allow all crawlers. Sitemap: https://example.com/sitemap.xml
+- "public/sitemap.xml" — XML sitemap. Include homepage + main section pages. Use https://example.com as base URL.
 
-Return a JSON object: { "public/filename": "content", ... }
-Return ONLY the JSON object. No markdown fences.`;
+${jsonInstruction()}`;
 }
 
 // ─── Step 10: README ──────────────────────────────────────────────────────────
 
 export function getReadmePrompt(q: ProjectQuestionnaire): string {
-  return `Generate a comprehensive README.md for this project.
+  const pkgName = q.project_name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+  return `Generate a complete README.md for this project.
 
 ${stackSummary(q)}
 
-Include these sections:
+The README must include:
+
 # ${q.project_name}
 
-Brief description from: ${q.description}
+> One-sentence description of the project.
 
-## Tech Stack
-List all technologies with brief descriptions.
+Brief 2-3 sentence overview from: ${q.description}
 
-## Features
-- List 6-10 features relevant to a ${q.project_type} app
+## ✨ Features
 
-## Project Structure
-Show the directory tree.
+- 8-10 specific features relevant to a ${q.project_type} app
 
-## Getting Started
+## 🛠 Tech Stack
+
+| Technology | Purpose |
+|---|---|
+(table row for each technology)
+
+## 📁 Project Structure
+
+\`\`\`
+${pkgName}/
+├── src/
+│   ├── app/          # Next.js App Router pages + API routes
+│   ├── components/   # React components
+│   │   ├── ui/       # Primitives (Button, Card, Input...)
+│   │   └── layout/   # Navbar, Footer
+│   ├── lib/          # Utilities and service clients
+│   └── types/        # TypeScript interfaces
+├── public/           # Static assets
+└── ...config files
+\`\`\`
+
+## 🚀 Getting Started
 
 ### Prerequisites
-Node.js 18+, npm/yarn/pnpm, any service accounts needed.
+- Node.js 18+
+- npm / yarn / pnpm
+${q.database === "supabase" ? "- Supabase account (free tier works)" : ""}
+${q.payments === "stripe" ? "- Stripe account" : ""}
 
 ### Installation
+
 \`\`\`bash
-git clone ...
-cd ${q.project_name.toLowerCase().replace(/\s+/g, "-")}
+git clone <your-repo>
+cd ${pkgName}
 npm install
 cp .env.example .env.local
-# Fill in your .env.local values
+# Edit .env.local with your credentials
 ${q.database === "supabase" ? "# Run supabase/schema.sql in your Supabase SQL Editor" : ""}
 ${q.database === "prisma_postgres" || q.database === "planetscale" ? "npx prisma db push" : ""}
-${q.cms === "payload" ? "# Payload admin will be at /admin on first run" : ""}
 npm run dev
 \`\`\`
 
-## Environment Variables
-Table with VARIABLE | Required | Description for every env var.
+Open [http://localhost:3000](http://localhost:3000)
 
-## Deployment
-Instructions for deploying to Vercel${q.database === "supabase" ? " + Supabase" : ""}${q.payments === "stripe" ? " + Stripe webhook setup" : ""}.
+## ⚙️ Environment Variables
 
-Return ONLY the README.md content. No extra text before or after.`;
+| Variable | Required | Description |
+|---|---|---|
+(one row per env var)
+
+## 📦 Deployment
+
+### Vercel (Recommended)
+1. Push to GitHub
+2. Import project at vercel.com/new
+3. Add environment variables in Vercel dashboard
+4. Deploy
+${q.payments === "stripe" ? "\n### Stripe Webhooks\nAfter deploying, set up Stripe webhook endpoint: \`https://yourdomain.com/api/stripe/webhook\`" : ""}
+
+## 📝 License
+
+MIT
+
+Return ONLY the README.md content. No extra text.`;
 }

@@ -5,14 +5,18 @@ import {
   getSystemPrompt,
   getEnvExamplePrompt,
   getDatabaseSchemaPrompt,
-  getCoreFilesPrompt,
-  getComponentsPrompt,
+  getRootFilesPrompt,
+  getLibFilesPrompt,
+  getFeaturePagesPrompt,
+  getUIPrimitivesPrompt,
+  getLayoutComponentsPrompt,
+  getFeatureComponentsPrompt,
   getApiRoutesPrompt,
+  getCMSFilesPrompt,
+  getPublicFilesPrompt,
   getReadmePrompt,
   getPackageJsonPrompt,
   getConfigFilesPrompt,
-  getCMSFilesPrompt,
-  getPublicFilesPrompt,
 } from "./prompts";
 
 export interface GenerationEvent {
@@ -45,7 +49,7 @@ async function callClaude(systemPrompt: string, userPrompt: string): Promise<str
   const client = getAnthropicClient();
   const message = await client.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 8192,
+    max_tokens: 16000,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
   });
@@ -54,16 +58,30 @@ async function callClaude(systemPrompt: string, userPrompt: string): Promise<str
 }
 
 function parseJsonResponse(raw: string): Record<string, string> {
-  // Strip markdown fences if present
-  const cleaned = raw.replace(/^```[a-z]*\n?/gm, "").replace(/^```$/gm, "").trim();
+  // Strip markdown fences
+  let cleaned = raw
+    .replace(/^```(?:json)?\s*\n?/gm, "")
+    .replace(/^```\s*$/gm, "")
+    .trim();
+
+  // Find the first { and last } to extract the JSON object
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start !== -1 && end !== -1 && end > start) {
+    cleaned = cleaned.slice(start, end + 1);
+  }
+
   try {
     return JSON.parse(cleaned);
   } catch {
-    // Try to extract JSON object from surrounding text
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    if (match) {
-      try { return JSON.parse(match[0]); } catch { /* fall through */ }
+    // Attempt to fix truncated JSON by finding the last complete key-value pair
+    // and closing the object
+    const lastComma = cleaned.lastIndexOf('",\n');
+    if (lastComma !== -1) {
+      const partial = cleaned.slice(0, lastComma) + '"}';
+      try { return JSON.parse(partial); } catch { /* fall through */ }
     }
+    console.error("Failed to parse JSON response:", cleaned.slice(0, 200));
     return {};
   }
 }
@@ -75,12 +93,39 @@ export async function generateProject(
   const system = getSystemPrompt();
   const allFiles: Omit<GeneratedFile, "id" | "project_id" | "created_at">[] = [];
 
-  const emit = (files: Omit<GeneratedFile, "id" | "project_id" | "created_at">[], label?: string) => {
+  const emit = (
+    files: Omit<GeneratedFile, "id" | "project_id" | "created_at">[],
+    label?: string
+  ) => {
     for (const file of files) {
       allFiles.push(file);
       onEvent({ type: "file", data: { file } });
     }
     if (label) onEvent({ type: "progress", data: { label } });
+  };
+
+  const step = async (
+    label: string,
+    promptFn: () => string,
+    mode: "json" | "raw" = "json",
+    outputPath?: string
+  ) => {
+    onEvent({ type: "progress", data: { label } });
+    const raw = await callClaude(system, promptFn());
+
+    if (mode === "raw" && outputPath) {
+      const cleaned = raw.replace(/^```[a-z]*\n?/gm, "").replace(/^```$/gm, "").trim();
+      emit([makeFile(outputPath, cleaned)]);
+      return;
+    }
+
+    const files = parseJsonResponse(raw);
+    const count = Object.keys(files).length;
+    if (count > 0) {
+      emit(Object.entries(files).map(([path, content]) => makeFile(path, content)));
+    } else {
+      console.warn(`No files parsed for step: ${label}`);
+    }
   };
 
   try {
@@ -90,68 +135,58 @@ export async function generateProject(
     const pkgCleaned = pkgRaw.replace(/^```[a-z]*\n?/gm, "").replace(/^```$/gm, "").trim();
     emit([makeFile("package.json", pkgCleaned)]);
 
-    // 2 — Config files
-    onEvent({ type: "progress", data: { label: "Generating config files..." } });
-    const configRaw = await callClaude(system, getConfigFilesPrompt(questionnaire));
-    const configs = parseJsonResponse(configRaw);
-    emit(Object.entries(configs).map(([path, content]) => makeFile(path, content)));
+    // 2 — Config files (tsconfig, next.config, tailwind, .gitignore, .eslintrc, .prettierrc)
+    await step("Generating config files...", () => getConfigFilesPrompt(questionnaire));
 
     // 3 — .env.example
     onEvent({ type: "progress", data: { label: "Generating .env.example..." } });
     const envRaw = await callClaude(system, getEnvExamplePrompt(questionnaire));
-    const envCleaned = envRaw.replace(/^```[a-z]*\n?/gm, "").replace(/^```$/gm, "").trim();
-    emit([makeFile(".env.example", envCleaned)]);
+    emit([makeFile(".env.example", envRaw.replace(/^```[a-z]*\n?/gm, "").replace(/^```$/gm, "").trim())]);
 
     // 4 — Database schema
     if (questionnaire.database !== "none") {
-      onEvent({ type: "progress", data: { label: "Generating database schema..." } });
-      const dbRaw = await callClaude(system, getDatabaseSchemaPrompt(questionnaire));
-      const dbCleaned = dbRaw.replace(/^```[a-z]*\n?/gm, "").replace(/^```$/gm, "").trim();
-      const schemaPath =
+      await step("Generating database schema...", () => getDatabaseSchemaPrompt(questionnaire),
+        questionnaire.database === "mongodb" || questionnaire.database === "firebase" ? "json" : "raw",
         questionnaire.database === "supabase" ? "supabase/schema.sql" :
         questionnaire.database === "prisma_postgres" || questionnaire.database === "planetscale" ? "prisma/schema.prisma" :
-        questionnaire.database === "firebase" ? "firestore.rules" :
-        "schema.txt";
-
-      if (questionnaire.database === "mongodb") {
-        const models = parseJsonResponse(dbRaw);
-        emit(Object.entries(models).map(([path, content]) => makeFile(path, content)));
-      } else {
-        emit([makeFile(schemaPath, dbCleaned)]);
-      }
+        undefined
+      );
     }
 
-    // 5 — Core files
-    onEvent({ type: "progress", data: { label: "Generating core app files..." } });
-    const coreRaw = await callClaude(system, getCoreFilesPrompt(questionnaire));
-    const coreFiles = parseJsonResponse(coreRaw);
-    emit(Object.entries(coreFiles).map(([path, content]) => makeFile(path, content)));
+    // 5a — Root files: layout, page, not-found, middleware, auth pages
+    await step("Generating app layout and pages...", () => getRootFilesPrompt(questionnaire));
 
-    // 6 — Components
-    onEvent({ type: "progress", data: { label: "Generating components..." } });
-    const compRaw = await callClaude(system, getComponentsPrompt(questionnaire));
-    const compFiles = parseJsonResponse(compRaw);
-    emit(Object.entries(compFiles).map(([path, content]) => makeFile(path, content)));
+    // 5b — Lib files: utils, supabase, stripe, db, etc.
+    const libPrompt = getLibFilesPrompt(questionnaire);
+    if (libPrompt) {
+      await step("Generating lib utilities...", () => libPrompt);
+    }
+
+    // 5c — Feature pages: project-type specific pages
+    const featurePrompt = getFeaturePagesPrompt(questionnaire);
+    if (featurePrompt) {
+      await step("Generating feature pages...", () => featurePrompt);
+    }
+
+    // 6a — UI primitive components
+    await step("Generating UI components...", () => getUIPrimitivesPrompt(questionnaire));
+
+    // 6b — Layout components: Navbar, Footer
+    await step("Generating layout components...", () => getLayoutComponentsPrompt(questionnaire));
+
+    // 6c — Feature-specific components
+    await step("Generating feature components...", () => getFeatureComponentsPrompt(questionnaire));
 
     // 7 — API routes
-    onEvent({ type: "progress", data: { label: "Generating API routes..." } });
-    const apiRaw = await callClaude(system, getApiRoutesPrompt(questionnaire));
-    const apiFiles = parseJsonResponse(apiRaw);
-    emit(Object.entries(apiFiles).map(([path, content]) => makeFile(path, content)));
+    await step("Generating API routes...", () => getApiRoutesPrompt(questionnaire));
 
     // 8 — CMS files (when CMS is configured)
     if (questionnaire.cms !== "none") {
-      onEvent({ type: "progress", data: { label: `Generating ${questionnaire.cms} CMS files...` } });
-      const cmsRaw = await callClaude(system, getCMSFilesPrompt(questionnaire));
-      const cmsFiles = parseJsonResponse(cmsRaw);
-      emit(Object.entries(cmsFiles).map(([path, content]) => makeFile(path, content)));
+      await step(`Generating ${questionnaire.cms} CMS files...`, () => getCMSFilesPrompt(questionnaire));
     }
 
     // 9 — Public folder
-    onEvent({ type: "progress", data: { label: "Generating public assets..." } });
-    const pubRaw = await callClaude(system, getPublicFilesPrompt(questionnaire));
-    const pubFiles = parseJsonResponse(pubRaw);
-    emit(Object.entries(pubFiles).map(([path, content]) => makeFile(path, content)));
+    await step("Generating public assets...", () => getPublicFilesPrompt(questionnaire));
 
     // 10 — README
     onEvent({ type: "progress", data: { label: "Generating README..." } });
