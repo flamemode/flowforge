@@ -20,13 +20,21 @@ export async function GET(
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // Only fetch paths + metadata, not content — content is fetched per-file when selected
-  const { data: files } = await supabase
+  const { data: files, error: filesError } = await supabase
     .from("generated_files")
     .select("id, path, language, created_at")
     .eq("project_id", id)
     .order("path");
 
-  return NextResponse.json({ project, files: files ?? [] });
+  if (filesError) {
+    console.error("generated_files query error:", filesError);
+  }
+
+  return NextResponse.json({
+    project,
+    files: files ?? [],
+    _debug: { filesError: filesError?.message ?? null, fileCount: files?.length ?? 0 },
+  });
 }
 
 export async function DELETE(
