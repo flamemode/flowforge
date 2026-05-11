@@ -131,7 +131,11 @@ export default function ProjectPage() {
     setDownloading(true);
     try {
       const res = await fetch(`/api/projects/${id}/download`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: "Download failed" }));
+        alert(error ?? "Download failed");
+        return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

@@ -30,7 +30,7 @@ export const CREDIT_PACKS: CreditPack[] = [
   },
 ];
 
-export const FREE_CREDITS = 2;
+export const FREE_CREDITS = 0;
 export const ITERATION_PRICE = 5;
 
 // ─── Questionnaire options ────────────────────────────────────────────────────

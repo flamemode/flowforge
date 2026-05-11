@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { CREDIT_PACKS, FREE_CREDITS } from "@/lib/constants";
+import { CREDIT_PACKS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
 import { CheckCircle, Zap } from "lucide-react";
 
@@ -47,10 +47,10 @@ export default function PricingPage() {
         </div>
 
         <div className="flex justify-center mb-12">
-          <div className="inline-flex items-center gap-2 bg-emerald-950/50 border border-emerald-800/50 rounded-full px-5 py-2.5">
-            <CheckCircle className="w-4 h-4 text-emerald-500" />
-            <span className="text-sm font-medium text-emerald-300">
-              New accounts get <strong>{FREE_CREDITS} free credits</strong> — no card required
+          <div className="inline-flex items-center gap-2 bg-zinc-900 border border-zinc-700 rounded-full px-5 py-2.5">
+            <CheckCircle className="w-4 h-4 text-violet-400" />
+            <span className="text-sm font-medium text-zinc-300">
+              Credits never expire — buy now, use whenever
             </span>
           </div>
         </div>

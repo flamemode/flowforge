@@ -19,17 +19,27 @@ export async function GET(
     .single();
 
   if (!project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
-  if (project.status !== "complete") {
-    return NextResponse.json({ error: "Project not ready" }, { status: 409 });
+
+  if (project.status === "failed") {
+    return NextResponse.json({ error: "Project generation failed — please create a new project." }, { status: 410 });
   }
 
-  const { data: files } = await supabase
+  if (project.status !== "complete") {
+    return NextResponse.json({ error: "Project is still generating, please wait." }, { status: 409 });
+  }
+
+  const { data: files, error: filesError } = await supabase
     .from("generated_files")
     .select("path, content")
     .eq("project_id", id);
 
+  if (filesError) {
+    console.error("Failed to fetch files:", filesError);
+    return NextResponse.json({ error: "Failed to load project files." }, { status: 500 });
+  }
+
   if (!files || files.length === 0) {
-    return NextResponse.json({ error: "No files found" }, { status: 404 });
+    return NextResponse.json({ error: "No files were saved for this project. Please generate a new project." }, { status: 404 });
   }
 
   const zip = new JSZip();

@@ -45,11 +45,18 @@ function makeFile(
   return { path, content: content.trim(), language: detectLanguage(path) };
 }
 
-async function callClaude(systemPrompt: string, userPrompt: string): Promise<string> {
+const SONNET = "claude-sonnet-4-6";
+const HAIKU = "claude-haiku-4-5-20251001";
+
+async function callClaude(
+  systemPrompt: string,
+  userPrompt: string,
+  opts: { model?: string; maxTokens?: number } = {}
+): Promise<string> {
   const client = getAnthropicClient();
   const message = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 16000,
+    model: opts.model ?? SONNET,
+    max_tokens: opts.maxTokens ?? 8000,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
   });
@@ -107,21 +114,22 @@ export async function generateProject(
   const step = async (
     label: string,
     promptFn: () => string,
-    mode: "json" | "raw" = "json",
-    outputPath?: string
+    opts: { model?: string; maxTokens?: number; mode?: "json" | "raw"; outputPath?: string } = {}
   ) => {
     onEvent({ type: "progress", data: { label } });
-    const raw = await callClaude(system, promptFn());
+    const raw = await callClaude(system, promptFn(), {
+      model: opts.model ?? SONNET,
+      maxTokens: opts.maxTokens ?? 8000,
+    });
 
-    if (mode === "raw" && outputPath) {
+    if (opts.mode === "raw" && opts.outputPath) {
       const cleaned = raw.replace(/^```[a-z]*\n?/gm, "").replace(/^```$/gm, "").trim();
-      emit([makeFile(outputPath, cleaned)]);
+      emit([makeFile(opts.outputPath, cleaned)]);
       return;
     }
 
     const files = parseJsonResponse(raw);
-    const count = Object.keys(files).length;
-    if (count > 0) {
+    if (Object.keys(files).length > 0) {
       emit(Object.entries(files).map(([path, content]) => makeFile(path, content)));
     } else {
       console.warn(`No files parsed for step: ${label}`);
@@ -129,68 +137,69 @@ export async function generateProject(
   };
 
   try {
-    // 1 — package.json
+    // 1 — package.json (Haiku: simple JSON, 1500 tokens plenty)
     onEvent({ type: "progress", data: { label: "Generating package.json..." } });
-    const pkgRaw = await callClaude(system, getPackageJsonPrompt(questionnaire));
-    const pkgCleaned = pkgRaw.replace(/^```[a-z]*\n?/gm, "").replace(/^```$/gm, "").trim();
-    emit([makeFile("package.json", pkgCleaned)]);
+    const pkgRaw = await callClaude(system, getPackageJsonPrompt(questionnaire), { model: HAIKU, maxTokens: 1500 });
+    emit([makeFile("package.json", pkgRaw.replace(/^```[a-z]*\n?/gm, "").replace(/^```$/gm, "").trim())]);
 
-    // 2 — Config files (tsconfig, next.config, tailwind, .gitignore, .eslintrc, .prettierrc)
-    await step("Generating config files...", () => getConfigFilesPrompt(questionnaire));
+    // 2 — Config files (Haiku: templated configs, not complex logic)
+    await step("Generating config files...", () => getConfigFilesPrompt(questionnaire), { model: HAIKU, maxTokens: 3000 });
 
-    // 3 — .env.example
+    // 3 — .env.example (Haiku: pure template)
     onEvent({ type: "progress", data: { label: "Generating .env.example..." } });
-    const envRaw = await callClaude(system, getEnvExamplePrompt(questionnaire));
+    const envRaw = await callClaude(system, getEnvExamplePrompt(questionnaire), { model: HAIKU, maxTokens: 1000 });
     emit([makeFile(".env.example", envRaw.replace(/^```[a-z]*\n?/gm, "").replace(/^```$/gm, "").trim())]);
 
-    // 4 — Database schema
+    // 4 — Database schema (Sonnet: schema design matters)
     if (questionnaire.database !== "none") {
-      await step("Generating database schema...", () => getDatabaseSchemaPrompt(questionnaire),
-        questionnaire.database === "mongodb" || questionnaire.database === "firebase" ? "json" : "raw",
-        questionnaire.database === "supabase" ? "supabase/schema.sql" :
-        questionnaire.database === "prisma_postgres" || questionnaire.database === "planetscale" ? "prisma/schema.prisma" :
-        undefined
-      );
+      const isJson = questionnaire.database === "mongodb" || questionnaire.database === "firebase";
+      await step("Generating database schema...", () => getDatabaseSchemaPrompt(questionnaire), {
+        maxTokens: 4000,
+        mode: isJson ? "json" : "raw",
+        outputPath: isJson ? undefined :
+          questionnaire.database === "supabase" ? "supabase/schema.sql" :
+          "prisma/schema.prisma",
+      });
     }
 
-    // 5a — Root files: layout, page, not-found, middleware, auth pages
-    await step("Generating app layout and pages...", () => getRootFilesPrompt(questionnaire));
+    // 5a — Root files: layout, page, globals, middleware, auth pages (Sonnet: real UI code)
+    await step("Generating app layout and pages...", () => getRootFilesPrompt(questionnaire), { maxTokens: 10000 });
 
-    // 5b — Lib files: utils, supabase, stripe, db, etc.
+    // 5b — Lib files: utils, clients (Sonnet)
     const libPrompt = getLibFilesPrompt(questionnaire);
     if (libPrompt) {
-      await step("Generating lib utilities...", () => libPrompt);
+      await step("Generating lib utilities...", () => libPrompt, { maxTokens: 6000 });
     }
 
-    // 5c — Feature pages: project-type specific pages
+    // 5c — Feature pages (Sonnet: most complex UI)
     const featurePrompt = getFeaturePagesPrompt(questionnaire);
     if (featurePrompt) {
-      await step("Generating feature pages...", () => featurePrompt);
+      await step("Generating feature pages...", () => featurePrompt, { maxTokens: 12000 });
     }
 
-    // 6a — UI primitive components
-    await step("Generating UI components...", () => getUIPrimitivesPrompt(questionnaire));
+    // 6a — UI primitive components (Sonnet)
+    await step("Generating UI components...", () => getUIPrimitivesPrompt(questionnaire), { maxTokens: 8000 });
 
-    // 6b — Layout components: Navbar, Footer
-    await step("Generating layout components...", () => getLayoutComponentsPrompt(questionnaire));
+    // 6b — Layout: Navbar, Footer (Sonnet)
+    await step("Generating layout components...", () => getLayoutComponentsPrompt(questionnaire), { maxTokens: 6000 });
 
-    // 6c — Feature-specific components
-    await step("Generating feature components...", () => getFeatureComponentsPrompt(questionnaire));
+    // 6c — Feature components (Sonnet: largest step)
+    await step("Generating feature components...", () => getFeatureComponentsPrompt(questionnaire), { maxTokens: 12000 });
 
-    // 7 — API routes
-    await step("Generating API routes...", () => getApiRoutesPrompt(questionnaire));
+    // 7 — API routes (Sonnet)
+    await step("Generating API routes...", () => getApiRoutesPrompt(questionnaire), { maxTokens: 8000 });
 
-    // 8 — CMS files (when CMS is configured)
+    // 8 — CMS files (Sonnet: config-heavy)
     if (questionnaire.cms !== "none") {
-      await step(`Generating ${questionnaire.cms} CMS files...`, () => getCMSFilesPrompt(questionnaire));
+      await step(`Generating ${questionnaire.cms} CMS files...`, () => getCMSFilesPrompt(questionnaire), { maxTokens: 8000 });
     }
 
-    // 9 — Public folder
-    await step("Generating public assets...", () => getPublicFilesPrompt(questionnaire));
+    // 9 — Public folder (Haiku: SVG + text files)
+    await step("Generating public assets...", () => getPublicFilesPrompt(questionnaire), { model: HAIKU, maxTokens: 2000 });
 
-    // 10 — README
+    // 10 — README (Haiku: docs, not code)
     onEvent({ type: "progress", data: { label: "Generating README..." } });
-    const readmeRaw = await callClaude(system, getReadmePrompt(questionnaire));
+    const readmeRaw = await callClaude(system, getReadmePrompt(questionnaire), { model: HAIKU, maxTokens: 2000 });
     emit([makeFile("README.md", readmeRaw.replace(/^```[a-z]*\n?/gm, "").replace(/^```$/gm, "").trim())]);
 
     onEvent({ type: "complete", data: {} });
