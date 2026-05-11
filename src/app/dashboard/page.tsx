@@ -2,22 +2,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
-import { Plus, Zap, FileCode, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { ProjectCard } from "@/components/dashboard/ProjectCard";
+import { Plus, Zap, FileCode } from "lucide-react";
 import type { GeneratedProject, UserProfile } from "@/types";
 
-function statusIcon(status: string) {
-  if (status === "complete") return <CheckCircle className="w-4 h-4 text-emerald-400" />;
-  if (status === "generating") return <Clock className="w-4 h-4 text-violet-400 animate-pulse" />;
-  if (status === "failed") return <AlertCircle className="w-4 h-4 text-red-400" />;
-  return <Clock className="w-4 h-4 text-zinc-500" />;
-}
-
-function statusLabel(status: string) {
-  if (status === "complete") return "Ready";
-  if (status === "generating") return "Generating...";
-  if (status === "failed") return "Failed";
-  return "Pending";
-}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -106,36 +94,9 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {typedProjects.map((project) => {
-              const q = project.questionnaire as unknown as Record<string, string>;
-              return (
-                <Link
-                  key={project.id}
-                  href={`/project/${project.id}`}
-                  className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 hover:border-violet-500/50 hover:bg-zinc-900/80 transition-all group"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-semibold text-white group-hover:text-violet-300 transition-colors truncate pr-2">
-                      {project.name}
-                    </h3>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {statusIcon(project.status)}
-                      <span className="text-xs text-zinc-500">{statusLabel(project.status)}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {[q.framework, q.language, q.database].filter(v => v && v !== "none").map((tag) => (
-                      <span key={tag} className="text-xs bg-zinc-800 text-zinc-400 border border-zinc-700 px-2 py-0.5 rounded-full">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                  {project.file_count > 0 && (
-                    <p className="text-xs text-zinc-600">{project.file_count} files generated</p>
-                  )}
-                </Link>
-              );
-            })}
+            {typedProjects.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
           </div>
         )}
       </main>
