@@ -49,11 +49,17 @@ export async function POST(
       try {
         const files = await generateProject(project.questionnaire, onEvent);
 
-        // Save all files to DB
+        // Save files in batches of 20 to avoid Supabase payload size limits
         if (files.length > 0) {
-          await supabase.from("generated_files").insert(
-            files.map((f) => ({ ...f, project_id: id }))
-          );
+          const BATCH = 20;
+          for (let i = 0; i < files.length; i += BATCH) {
+            const batch = files.slice(i, i + BATCH).map((f) => ({ ...f, project_id: id }));
+            const { error: insertError } = await supabase.from("generated_files").insert(batch);
+            if (insertError) {
+              console.error(`Failed to save files batch ${i}-${i + BATCH}:`, insertError);
+              throw new Error(`Database error saving files: ${insertError.message}`);
+            }
+          }
         }
 
         await supabase
