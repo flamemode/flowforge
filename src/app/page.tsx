@@ -43,13 +43,16 @@ export default function Home() {
         </div>
         <div className="ml-auto flex items-center gap-3">
           <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white" asChild>
+            <Link href="/guide">Guide</Link>
+          </Button>
+          <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white" asChild>
             <Link href="/pricing">Pricing</Link>
           </Button>
           <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white" asChild>
             <Link href="/auth/login">Sign in</Link>
           </Button>
           <Button size="sm" className="bg-violet-600 hover:bg-violet-700" asChild>
-            <Link href="/auth/signup">Start free</Link>
+            <Link href="/auth/signup">Get started</Link>
           </Button>
         </div>
       </header>
