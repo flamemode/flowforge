@@ -11,6 +11,8 @@ import {
   getReadmePrompt,
   getPackageJsonPrompt,
   getConfigFilesPrompt,
+  getCMSFilesPrompt,
+  getPublicFilesPrompt,
 } from "./prompts";
 
 export interface GenerationEvent {
@@ -137,7 +139,21 @@ export async function generateProject(
     const apiFiles = parseJsonResponse(apiRaw);
     emit(Object.entries(apiFiles).map(([path, content]) => makeFile(path, content)));
 
-    // 8 — README
+    // 8 — CMS files (when CMS is configured)
+    if (questionnaire.cms !== "none") {
+      onEvent({ type: "progress", data: { label: `Generating ${questionnaire.cms} CMS files...` } });
+      const cmsRaw = await callClaude(system, getCMSFilesPrompt(questionnaire));
+      const cmsFiles = parseJsonResponse(cmsRaw);
+      emit(Object.entries(cmsFiles).map(([path, content]) => makeFile(path, content)));
+    }
+
+    // 9 — Public folder
+    onEvent({ type: "progress", data: { label: "Generating public assets..." } });
+    const pubRaw = await callClaude(system, getPublicFilesPrompt(questionnaire));
+    const pubFiles = parseJsonResponse(pubRaw);
+    emit(Object.entries(pubFiles).map(([path, content]) => makeFile(path, content)));
+
+    // 10 — README
     onEvent({ type: "progress", data: { label: "Generating README..." } });
     const readmeRaw = await callClaude(system, getReadmePrompt(questionnaire));
     emit([makeFile("README.md", readmeRaw.replace(/^```[a-z]*\n?/gm, "").replace(/^```$/gm, "").trim())]);

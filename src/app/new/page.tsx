@@ -13,6 +13,10 @@ import {
   AUTH_OPTIONS,
   PAYMENT_OPTIONS,
   EXTRA_API_OPTIONS,
+  DESIGN_STYLE_OPTIONS,
+  COLOR_SCHEME_OPTIONS,
+  ANIMATION_OPTIONS,
+  FEATURE_OPTIONS,
 } from "@/lib/constants";
 import type { ProjectQuestionnaire } from "@/types";
 import { ChevronRight, ChevronLeft, Zap } from "lucide-react";
@@ -26,6 +30,8 @@ const STEPS = [
   "CMS",
   "Auth & Payments",
   "Extra APIs",
+  "Design & Feel",
+  "Features",
   "Describe it",
 ];
 
@@ -39,6 +45,10 @@ const empty: ProjectQuestionnaire = {
   auth: "supabase_auth",
   payments: "none",
   extra_apis: [],
+  design_style: "minimalist",
+  color_scheme: "dark",
+  animations: "subtle",
+  features: [],
   description: "",
   project_name: "",
 };
@@ -61,8 +71,16 @@ export default function NewProjectPage() {
         : [...prev.extra_apis, val as never],
     }));
 
+  const toggleFeature = (val: string) =>
+    setQ((prev) => ({
+      ...prev,
+      features: prev.features.includes(val as never)
+        ? prev.features.filter((f) => f !== val)
+        : [...prev.features, val as never],
+    }));
+
   const canNext = () => {
-    if (step === 7) return q.description.trim().length > 10 && q.project_name.trim().length > 0;
+    if (step === STEPS.length - 1) return q.description.trim().length > 10 && q.project_name.trim().length > 0;
     return true;
   };
 
@@ -75,14 +93,8 @@ export default function NewProjectPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: q.project_name, questionnaire: q }),
       });
-      if (res.status === 402) {
-        router.push("/pricing");
-        return;
-      }
-      if (res.status === 401) {
-        router.push("/auth/signup?redirect=/new");
-        return;
-      }
+      if (res.status === 402) { router.push("/pricing"); return; }
+      if (res.status === 401) { router.push("/auth/signup?redirect=/new"); return; }
       if (!res.ok) {
         const d = await res.json();
         setError(d.error ?? "Something went wrong");
@@ -110,10 +122,10 @@ export default function NewProjectPage() {
 
       <main className="max-w-2xl mx-auto px-6 py-12">
         {/* Progress */}
-        <div className="flex items-center gap-2 mb-10">
+        <div className="flex items-center gap-1 mb-10">
           {STEPS.map((s, i) => (
-            <div key={s} className="flex items-center gap-2 flex-1">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+            <div key={s} className="flex items-center gap-1 flex-1">
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                 i < step ? "bg-violet-600 text-white" :
                 i === step ? "bg-violet-600 text-white ring-2 ring-violet-400 ring-offset-2 ring-offset-zinc-950" :
                 "bg-zinc-800 text-zinc-500"
@@ -327,8 +339,97 @@ export default function NewProjectPage() {
             </div>
           )}
 
-          {/* Step 7 — Describe */}
+          {/* Step 7 — Design & Feel */}
           {step === 7 && (
+            <div className="space-y-6">
+              <div>
+                <p className="text-sm font-medium text-zinc-400 mb-3">Design style</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {DESIGN_STYLE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => set("design_style", opt.value as ProjectQuestionnaire["design_style"])}
+                      className={`p-4 rounded-xl border text-left transition-all ${
+                        q.design_style === opt.value
+                          ? "border-violet-500 bg-violet-500/10"
+                          : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                      }`}
+                    >
+                      <div className="font-medium text-white">{opt.label}</div>
+                      <div className="text-xs text-zinc-400 mt-1">{opt.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-zinc-400 mb-3">Color scheme</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {COLOR_SCHEME_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => set("color_scheme", opt.value as ProjectQuestionnaire["color_scheme"])}
+                      className={`p-4 rounded-xl border text-left transition-all ${
+                        q.color_scheme === opt.value
+                          ? "border-violet-500 bg-violet-500/10"
+                          : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                      }`}
+                    >
+                      <div className="font-medium text-white text-sm">{opt.label}</div>
+                      <div className="text-xs text-zinc-400 mt-1">{opt.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-zinc-400 mb-3">Animations</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {ANIMATION_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => set("animations", opt.value as ProjectQuestionnaire["animations"])}
+                      className={`p-4 rounded-xl border text-left transition-all ${
+                        q.animations === opt.value
+                          ? "border-violet-500 bg-violet-500/10"
+                          : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                      }`}
+                    >
+                      <div className="font-medium text-white">{opt.label}</div>
+                      <div className="text-xs text-zinc-400 mt-1">{opt.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 8 — Features */}
+          {step === 8 && (
+            <div>
+              <p className="text-sm text-zinc-400 mb-4">Select features to include — or skip to keep it lean.</p>
+              <div className="grid grid-cols-2 gap-3">
+                {FEATURE_OPTIONS.map((opt) => {
+                  const selected = q.features.includes(opt.value as never);
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => toggleFeature(opt.value)}
+                      className={`p-4 rounded-xl border text-left transition-all ${
+                        selected
+                          ? "border-violet-500 bg-violet-500/10"
+                          : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                      }`}
+                    >
+                      <div className="font-medium text-white">{opt.label}</div>
+                      <div className="text-xs text-zinc-400 mt-1">{opt.description}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Step 9 — Describe */}
+          {step === 9 && (
             <div className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-zinc-400 mb-2">Project name</label>
@@ -349,7 +450,7 @@ export default function NewProjectPage() {
                   placeholder="e.g. A SaaS app for freelance photographers to share galleries with clients, collect feedback, and receive payments via Stripe."
                   className="w-full px-4 py-3 rounded-xl bg-zinc-900 border border-zinc-700 text-white placeholder:text-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 resize-none"
                 />
-                <p className="text-xs text-zinc-500 mt-1">{q.description.length} chars — aim for 20–200</p>
+                <p className="text-xs text-zinc-500 mt-1">{q.description.length} chars — aim for 20–300</p>
               </div>
 
               {/* Summary */}
@@ -365,11 +466,15 @@ export default function NewProjectPage() {
                   q.auth !== "none" ? ["Auth", AUTH_OPTIONS.find(o => o.value === q.auth)?.label] : null,
                   q.payments !== "none" ? ["Payments", PAYMENT_OPTIONS.find(o => o.value === q.payments)?.label] : null,
                   q.extra_apis.length > 0 ? ["APIs", q.extra_apis.join(", ")] : null,
+                  ["Design", DESIGN_STYLE_OPTIONS.find(o => o.value === q.design_style)?.label],
+                  ["Colors", COLOR_SCHEME_OPTIONS.find(o => o.value === q.color_scheme)?.label],
+                  ["Motion", ANIMATION_OPTIONS.find(o => o.value === q.animations)?.label],
+                  q.features.length > 0 ? ["Features", q.features.join(", ")] : null,
                 ].filter(Boolean).map((row) => {
                   const [k, v] = row as [string, string];
                   return (
                     <div key={k} className="flex gap-2">
-                      <span className="text-zinc-500 w-24 flex-shrink-0">{k}</span>
+                      <span className="text-zinc-500 w-20 flex-shrink-0">{k}</span>
                       <span className="text-zinc-200">{v}</span>
                     </div>
                   );

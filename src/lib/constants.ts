@@ -38,12 +38,58 @@ export const ITERATION_PRICE = 5;
 export const PROJECT_TYPE_OPTIONS = [
   { value: "saas", label: "SaaS App", icon: "⚡" },
   { value: "ecommerce", label: "E-Commerce", icon: "🛒" },
+  { value: "marketplace", label: "Marketplace", icon: "🏪" },
   { value: "photography", label: "Photography", icon: "📷" },
   { value: "portfolio", label: "Portfolio", icon: "🎨" },
   { value: "blog", label: "Blog / CMS", icon: "✍️" },
   { value: "dashboard", label: "Dashboard", icon: "📊" },
   { value: "landing", label: "Landing Page", icon: "🚀" },
+  { value: "social", label: "Social / Community", icon: "👥" },
+  { value: "booking", label: "Booking / Scheduling", icon: "📅" },
+  { value: "directory", label: "Directory / Listings", icon: "📋" },
+  { value: "forum", label: "Forum / Discussion", icon: "💬" },
+  { value: "game", label: "Browser Game", icon: "🎮" },
   { value: "api_backend", label: "API / Backend", icon: "🔧" },
+] as const;
+
+export const DESIGN_STYLE_OPTIONS = [
+  { value: "minimalist", label: "Minimalist", description: "Clean, lots of whitespace, simple typography" },
+  { value: "bold", label: "Bold & Vibrant", description: "Strong colors, big type, high contrast" },
+  { value: "glassmorphism", label: "Glassmorphism", description: "Frosted glass, blur effects, gradients" },
+  { value: "brutalist", label: "Brutalist", description: "Raw, unconventional, stark layouts" },
+  { value: "corporate", label: "Corporate / Professional", description: "Clean, trustworthy, business-focused" },
+  { value: "playful", label: "Playful / Fun", description: "Rounded, colorful, energetic feel" },
+] as const;
+
+export const COLOR_SCHEME_OPTIONS = [
+  { value: "dark", label: "Dark mode", description: "Dark background, light text" },
+  { value: "light", label: "Light mode", description: "White/light background" },
+  { value: "system_toggle", label: "Toggle (Dark + Light)", description: "User can switch — includes both themes" },
+] as const;
+
+export const ANIMATION_OPTIONS = [
+  { value: "none", label: "None", description: "Static — no motion effects" },
+  { value: "subtle", label: "Subtle", description: "Light transitions and hover effects" },
+  { value: "moderate", label: "Moderate", description: "Page transitions, scroll animations" },
+  { value: "rich", label: "Rich", description: "Framer Motion — full micro-interactions" },
+] as const;
+
+export const FEATURE_OPTIONS = [
+  { value: "dark_mode", label: "Dark / Light toggle", description: "Theme switcher component" },
+  { value: "seo", label: "SEO optimized", description: "Meta tags, OG image, sitemap, robots.txt" },
+  { value: "pwa", label: "Progressive Web App", description: "Service worker, manifest, offline support" },
+  { value: "analytics", label: "Analytics", description: "Google Analytics or Plausible integration" },
+  { value: "search", label: "Search", description: "Full-text search across content" },
+  { value: "notifications", label: "Notifications", description: "In-app or push notification system" },
+  { value: "file_upload", label: "File upload", description: "Drag-and-drop file upload component" },
+  { value: "admin_panel", label: "Admin panel", description: "Back-office dashboard for managing data" },
+  { value: "comments", label: "Comments / Reviews", description: "User comment or rating system" },
+  { value: "social_auth", label: "Social login", description: "Sign in with Google / GitHub / etc." },
+  { value: "export_data", label: "Export data", description: "Download CSV or PDF exports" },
+  { value: "i18n", label: "Internationalization", description: "Multi-language support (next-intl)" },
+  { value: "multi_tenant", label: "Multi-tenancy", description: "Separate data per org/workspace" },
+  { value: "rate_limiting", label: "Rate limiting", description: "API rate limiting middleware" },
+  { value: "webhooks", label: "Webhooks", description: "Outbound webhook delivery system" },
 ] as const;
 
 export const FRAMEWORK_OPTIONS = [

@@ -23,7 +23,42 @@ export type ProjectType =
   | "dashboard"
   | "landing"
   | "api_backend"
-  | "portfolio";
+  | "portfolio"
+  | "game"
+  | "marketplace"
+  | "social"
+  | "directory"
+  | "booking"
+  | "forum";
+
+export type DesignStyle =
+  | "minimalist"
+  | "bold"
+  | "glassmorphism"
+  | "brutalist"
+  | "corporate"
+  | "playful";
+
+export type ColorScheme = "dark" | "light" | "system_toggle";
+
+export type AnimationLevel = "none" | "subtle" | "moderate" | "rich";
+
+export type ProjectFeature =
+  | "dark_mode"
+  | "i18n"
+  | "seo"
+  | "pwa"
+  | "analytics"
+  | "search"
+  | "notifications"
+  | "file_upload"
+  | "admin_panel"
+  | "comments"
+  | "social_auth"
+  | "export_data"
+  | "multi_tenant"
+  | "rate_limiting"
+  | "webhooks";
 
 export type Framework =
   | "nextjs"
@@ -79,6 +114,10 @@ export interface ProjectQuestionnaire {
   auth: AuthProvider;
   payments: PaymentProvider;
   extra_apis: ExtraAPI[];
+  design_style: DesignStyle;
+  color_scheme: ColorScheme;
+  animations: AnimationLevel;
+  features: ProjectFeature[];
   description: string;
   project_name: string;
 }
