@@ -210,6 +210,10 @@ export default function ProjectPage() {
           Origo
         </Link>
         <span className="text-zinc-600">/</span>
+        <Link href="/dashboard" className="text-zinc-400 hover:text-white transition-colors text-sm">
+          Projects
+        </Link>
+        <span className="text-zinc-600">/</span>
         <span className="text-zinc-300 font-medium truncate">{project?.name ?? "Loading..."}</span>
         <div className="ml-auto flex items-center gap-3">
           {isComplete && (
