@@ -40,6 +40,8 @@ export default function ProjectPage() {
   const [project, setProject] = useState<GeneratedProject | null>(null);
   const [files, setFiles] = useState<GeneratedFile[]>([]);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<GeneratedFile | null>(null);
+  const [loadingFile, setLoadingFile] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentLabel, setCurrentLabel] = useState("");
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
@@ -54,7 +56,7 @@ export default function ProjectPage() {
         setProject(project);
         if (f?.length > 0) {
           setFiles(f);
-          setSelectedPath(f[0].path);
+          selectFile(f[0]);
         }
         if (project?.status === "pending" || project?.status === "generating" || project?.status === "failed") {
           startGeneration();
@@ -62,6 +64,29 @@ export default function ProjectPage() {
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const selectFile = async (file: GeneratedFile) => {
+    setSelectedPath(file.path);
+    // If content is already loaded, use it
+    if (file.content) {
+      setSelectedFile(file);
+      return;
+    }
+    // Fetch content from API
+    if (!file.id) return;
+    setLoadingFile(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/files/${file.id}`);
+      if (res.ok) {
+        const { file: fullFile } = await res.json();
+        setSelectedFile(fullFile);
+        // Cache the content in the files list
+        setFiles((prev) => prev.map((f) => f.id === file.id ? { ...f, content: fullFile.content } : f));
+      }
+    } finally {
+      setLoadingFile(false);
+    }
+  };
 
   const retryGeneration = () => {
     streamRef.current = false;
@@ -120,7 +145,11 @@ export default function ProjectPage() {
                 const exists = prev.find((f) => f.path === file.path);
                 return exists ? prev : [...prev, file];
               });
-              setSelectedPath((p) => p ?? file.path);
+              // Auto-select first file with content for live preview
+              setSelectedPath((p) => {
+                if (!p) { setSelectedFile(file); return file.path; }
+                return p;
+              });
             }
 
             if (event.type === "complete") {
@@ -164,7 +193,6 @@ export default function ProjectPage() {
     }
   };
 
-  const selectedFile = files.find((f) => f.path === selectedPath) ?? null;
   const isComplete = project?.status === "complete";
 
   return (
@@ -233,7 +261,14 @@ export default function ProjectPage() {
                 )}
               </div>
               <div className="overflow-y-auto flex-1">
-                <FileTree files={files} selected={selectedPath} onSelect={setSelectedPath} />
+                <FileTree
+                  files={files}
+                  selected={selectedPath}
+                  onSelect={(path) => {
+                    const file = files.find((f) => f.path === path);
+                    if (file) selectFile(file);
+                  }}
+                />
               </div>
             </>
           )}
@@ -256,6 +291,10 @@ export default function ProjectPage() {
                 </Button>
                 <p className="text-zinc-600 text-xs mt-3">No credit will be charged for retries</p>
               </div>
+            </div>
+          ) : loadingFile ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
             </div>
           ) : (
             <FileViewer file={selectedFile} />
