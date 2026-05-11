@@ -235,3 +235,33 @@ begin
   return profile.simulations_used_this_month < sim_limit;
 end;
 $$ language plpgsql security definer;
+
+-- ─── DELIVERABLES ─────────────────────────────────────────────────────────────
+create table public.deliverables (
+  id text primary key,
+  simulation_id uuid references public.simulations(id) on delete cascade not null,
+  project_id uuid references public.projects(id) on delete cascade not null,
+  type text not null check (type in (
+    'logo_svg', 'brand_guidelines', 'website_html',
+    'marketing_strategy', 'social_media_pack', 'ad_copy'
+  )),
+  title text not null,
+  content text not null,
+  status text not null default 'complete',
+  iteration integer not null default 1,
+  created_at timestamptz not null default now()
+);
+
+alter table public.deliverables enable row level security;
+
+create policy "Users can manage own deliverables"
+  on public.deliverables for all
+  using (
+    exists (
+      select 1 from public.simulations s
+      where s.id = simulation_id and s.user_id = auth.uid()
+    )
+  );
+
+-- Grant permissions
+grant all on public.deliverables to authenticated;
