@@ -240,6 +240,45 @@ body {
     // 6b — Layout: Navbar, Footer (Sonnet)
     await step("Generating layout components...", () => getLayoutComponentsPrompt(questionnaire), { maxTokens: 6000 });
 
+    // Inject ThemeToggle deterministically — Navbar always imports it for system_toggle, but Claude often omits the file
+    if (questionnaire.color_scheme === "system_toggle") {
+      const ext = questionnaire.language === "typescript" ? "tsx" : "jsx";
+      const themeToggle = `"use client";
+import { useEffect, useState } from "react";
+import { Sun, Moon } from "lucide-react";
+
+export default function ThemeToggle() {
+  const [dark, setDark] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const isDark = stored === "dark" || (!stored && prefersDark);
+    setDark(isDark);
+    document.documentElement.classList.toggle("dark", isDark);
+  }, []);
+
+  const toggle = () => {
+    const next = !dark;
+    setDark(next);
+    localStorage.setItem("theme", next ? "dark" : "light");
+    document.documentElement.classList.toggle("dark", next);
+  };
+
+  return (
+    <button
+      onClick={toggle}
+      aria-label="Toggle theme"
+      className="p-2 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+    >
+      {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+    </button>
+  );
+}
+`;
+      emit([makeFile(`src/components/ui/ThemeToggle.${ext}`, themeToggle)]);
+    }
+
     // 6c — Feature components (Sonnet: largest step)
     await step("Generating feature components...", () => getFeatureComponentsPrompt(questionnaire), { maxTokens: 12000 });
 
