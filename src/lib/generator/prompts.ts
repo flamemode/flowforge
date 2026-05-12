@@ -72,7 +72,7 @@ ${q.payments === "stripe" ? "- stripe: ^17.0.0, @stripe/stripe-js: ^4.0.0" : ""}
 ${q.payments === "lemonsqueezy" ? "- @lemonsqueezy/lemonsqueezy-js: ^1.3.0" : ""}
 ${q.extra_apis?.includes("resend") ? "- resend: ^4.0.0" : ""}
 ${q.extra_apis?.includes("openai") ? "- openai: ^4.70.0" : ""}
-${q.extra_apis?.includes("anthropic") ? "- @anthropic-ai/sdk: ^0.32.0" : ""}
+${q.extra_apis?.includes("anthropic") ? "- @anthropic-ai/sdk: ^0.39.0" : ""}
 ${q.extra_apis?.includes("cloudinary") ? "- cloudinary: ^2.5.0, next-cloudinary: ^6.0.0" : ""}
 ${q.extra_apis?.includes("pusher") ? "- pusher: ^5.2.0, pusher-js: ^8.4.0" : ""}
 ${q.extra_apis?.includes("algolia") ? "- algoliasearch: ^5.0.0" : ""}
@@ -81,11 +81,19 @@ ${q.extra_apis?.includes("twilio") ? "- twilio: ^5.3.0" : ""}
 ${q.cms === "payload" ? `- payload: ^3.0.0, @payloadcms/next: ^3.0.0, @payloadcms/richtext-lexical: ^3.0.0${q.database === "mongodb" ? ", @payloadcms/db-mongodb: ^3.0.0" : ", @payloadcms/db-postgres: ^3.0.0"}` : ""}
 ${q.cms === "sanity" ? "- next-sanity: ^9.0.0, @sanity/image-url: ^1.0.3, sanity: ^3.60.0" : ""}
 ${q.cms === "contentful" ? "- contentful: ^11.0.0" : ""}
-${q.animations === "rich" ? "- framer-motion: ^11.0.0" : ""}
+${q.animations === "rich" ? "- framer-motion: ^12.0.0" : ""}
 ${q.features?.includes("i18n") ? "- next-intl: ^3.20.0" : ""}
 ${q.features?.includes("analytics") ? "- @vercel/analytics: ^1.3.0" : ""}
 ${q.features?.includes("pwa") ? "- @ducanh2912/next-pwa: ^10.0.0" : ""}
 ${q.project_type === "game" ? "- phaser: ^3.86.0" : ""}
+
+Include an "overrides" field to force React 19 across all transitive deps that may still declare older peer versions:
+{
+  "overrides": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}
 
 Return ONLY the raw JSON content of package.json. No markdown, no explanation.`;
 }
