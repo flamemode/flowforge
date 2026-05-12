@@ -134,12 +134,16 @@ export default function NewProjectPage() {
       if (res.status === 402) { router.push("/pricing"); return; }
       if (res.status === 401) { router.push("/auth/signup?redirect=/new"); return; }
       if (!res.ok) {
-        const d = await res.json();
-        setError(d.error ?? "Something went wrong");
+        const d = await res.json().catch(() => ({}));
+        setError((d as { error?: string }).error ?? `Server error (${res.status}). Please try again.`);
         return;
       }
-      const { project } = await res.json();
-      router.push(`/project/${project.id}`);
+      const data = await res.json().catch(() => null);
+      if (!data?.project?.id) {
+        setError("Project was created but the response was invalid. Go to your dashboard to find it.");
+        return;
+      }
+      router.push(`/project/${data.project.id}`);
     } catch {
       setError("Network error. Please try again.");
     } finally {
