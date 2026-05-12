@@ -314,20 +314,73 @@ export function getRootFilesPrompt(q: ProjectQuestionnaire): string {
   - Link back to homepage
   - Styled consistently with the ${q.design_style} design style`);
 
+    // Generate page.tsx + every section component it imports in the SAME step
+    // so there are never missing module errors.
+    const homeSections = q.project_type === "ecommerce" || q.project_type === "marketplace"
+      ? ["HeroSection", "CategoryGrid", "FeaturedProducts", "PromoBanner", "BenefitsRow", "NewsletterSection"]
+      : q.project_type === "saas" || q.project_type === "dashboard"
+      ? ["HeroSection", "FeaturesGrid", "TestimonialsSection", "PricingSection", "CTASection"]
+      : q.project_type === "landing"
+      ? ["HeroSection", "FeaturesGrid", "TestimonialsSection", "PricingSection", "FAQSection", "CTASection"]
+      : q.project_type === "blog"
+      ? ["HeroSection", "FeaturedPosts", "CategoriesRow", "NewsletterSection"]
+      : q.project_type === "photography"
+      ? ["HeroSection", "GalleryPreview", "AboutSection", "ContactSection"]
+      : q.project_type === "portfolio"
+      ? ["HeroSection", "ProjectsPreview", "SkillsSection", "AboutSection", "ContactSection"]
+      : q.project_type === "booking"
+      ? ["HeroSection", "ServicesGrid", "HowItWorks", "TestimonialsSection", "CTASection"]
+      : q.project_type === "social" || q.project_type === "forum"
+      ? ["HeroSection", "FeedPreview", "FeaturesGrid", "CTASection"]
+      : q.project_type === "directory"
+      ? ["HeroSection", "SearchSection", "FeaturedListings", "CategoriesGrid", "CTASection"]
+      : q.project_type === "game"
+      ? ["HeroSection", "GamePreview", "FeaturesGrid", "CTASection"]
+      : ["HeroSection", "FeaturesGrid", "CTASection"];
+
     files.push(`"src/app/page.${t}":
-  - Homepage for a ${q.project_type} application
-  - Content specifically about: ${q.description}
-  ${q.project_type === "ecommerce" || q.project_type === "marketplace" ? `- Full storefront homepage. Must include ALL of these sections in order:
-    1. HERO: Full-width banner with background image/gradient, large headline, subheadline, two CTA buttons (Shop Now + View Deals). Badge showing e.g. "Free shipping over $50".
-    2. CATEGORY GRID: 4-6 category cards with icon/image, category name, item count. Grid layout, hover lift effect.
-    3. FEATURED PRODUCTS: Section heading + horizontal scroll or 4-column grid of ProductCard components. Each card: product image placeholder (bg-gradient), name, price, star rating (4-5 stars), "Add to Cart" button.
-    4. BANNER/PROMO: Full-width promotional strip with bold color, discount offer text, CTA button.
-    5. BENEFITS ROW: 4 icons in a row — Free Shipping, Easy Returns, Secure Payment, 24/7 Support. Each with icon, title, description.
-    6. NEWSLETTER: Email signup section with headline and input+button.
-    7. FOOTER imported from layout.
-  - Use real product names and copy relevant to: ${q.description}` : `- Include: hero section with headline + CTA button, features/benefits section (3-6 items), second CTA section`}
-  - Fully styled with ${q.styling} using ${q.design_style} design and ${q.color_scheme} color scheme — MUST look polished and production-ready, not like a template
-  - Real copy relevant to the project — not placeholder Lorem ipsum`);
+  - Homepage that imports ONLY these section components (all generated below):
+    ${homeSections.map(s => `import ${s} from '@/components/home/${s}';`).join("\n    ")}
+  - page.tsx body: render sections in order: <main>{${homeSections.map(s => `<${s} />`).join("")}}</main>
+  - No inline section code in page.tsx — everything is in the component files below
+  - Content about: ${q.description}`);
+
+    // Co-generate every section component that page.tsx imports
+    homeSections.forEach(section => {
+      const sectionDesc =
+        section === "HeroSection" ? `Full-width hero. Large headline, subheadline relevant to "${q.description}". ${q.project_type === "ecommerce" || q.project_type === "marketplace" ? 'Two CTA buttons (Shop Now + View Deals). Badge: "Free shipping over $50". Background: bold gradient.' : "Primary CTA button. Gradient or image background. Real copy."} ${q.animations !== "none" ? "Entrance animations." : ""}` :
+        section === "CategoryGrid" ? `4-6 category cards in a responsive grid. Each: icon/emoji, category name, item count. Hover lift effect. Links to /products?category=X.` :
+        section === "FeaturedProducts" ? `4-column responsive grid of product cards. Each card: gradient placeholder image, product name, price (bold), star rating row, "Add to Cart" button. Real product names from: ${q.description}.` :
+        section === "PromoBanner" ? `Full-width colored strip. Bold headline, discount offer, CTA button. High-contrast colors.` :
+        section === "BenefitsRow" ? `Row of 4 benefit items: Free Shipping, Easy Returns, Secure Payment, 24/7 Support. Each: lucide icon + title + short description.` :
+        section === "NewsletterSection" ? `Email signup. Headline, subheadline, email input + submit button in a row. Success state shows confirmation message.` :
+        section === "FeaturesGrid" ? `3-column grid (1 col mobile) of feature cards. 6 features with lucide icon in colored box, title, description. Relevant to: ${q.description}.` :
+        section === "TestimonialsSection" ? `3 testimonial cards in a grid. Each: star rating, quote, avatar placeholder circle, name, role/company. Real-sounding names and quotes.` :
+        section === "PricingSection" ? `3 pricing plan cards. Middle plan highlighted with primary color border + "Most popular" badge. Features checklist. CTA button.` :
+        section === "CTASection" ? `Full-width section with large headline, subheadline, primary CTA button. Contrasting background color.` :
+        section === "FAQSection" ? `Accordion FAQ. 6 questions and answers relevant to ${q.description}. Click to expand/collapse.` :
+        section === "FeaturedPosts" ? `Grid of 3 blog post preview cards. Each: cover image placeholder, category badge, title, excerpt, author + date.` :
+        section === "CategoriesRow" ? `Horizontal scrollable row of category pills/cards with icons.` :
+        section === "GalleryPreview" ? `4-6 photo placeholder cards in a masonry-style grid. "View All" button.` :
+        section === "AboutSection" ? `Two-column layout: text left (headline, bio/description, bullet points), image placeholder right.` :
+        section === "ContactSection" ? `Contact form: name, email, message fields + submit button. Success/error states.` :
+        section === "ProjectsPreview" ? `Grid of 3 portfolio project cards with image placeholder, title, tags, links.` :
+        section === "SkillsSection" ? `Skill badges grid grouped by category (Frontend, Backend, Tools).` :
+        section === "ServicesGrid" ? `Grid of service cards: icon, name, description, price, "Book Now" button.` :
+        section === "HowItWorks" ? `3-step process with numbered circles, title, description per step. Connected by line on desktop.` :
+        section === "FeedPreview" ? `2-3 sample post cards showing the platform's content format.` :
+        section === "GamePreview" ? `Game screenshot/preview area with description and play button.` :
+        section === "FeaturedListings" ? `Grid of listing cards with image, title, price/category, rating.` :
+        section === "SearchSection" ? `Large search input with filters. Prominent placement.` :
+        section === "CategoriesGrid" ? `Grid of category cards with icon and count.` :
+        `Section for ${section} relevant to ${q.description}.`;
+
+      files.push(`"src/components/home/${section}.${t}":
+  - ${sectionDesc}
+  - Fully styled with ${q.styling} using ${q.design_style} design and ${q.color_scheme} color scheme
+  - Production quality — polished, not a template placeholder
+  - Uses lucide-react for icons, real copy relevant to: ${q.description}`);
+    });
 
     if (q.auth !== "none") {
       files.push(`"src/app/(auth)/login/page.${t}":
@@ -385,7 +438,7 @@ CRITICAL component structure rules:
 - NEVER put Navbar, Footer, Sidebar, or any reusable UI inside page.tsx inline — always import them from @/components/layout/Navbar, @/components/layout/Footer etc.
 - src/app/layout.tsx must import <Navbar /> and <Footer /> from @/components/layout/ and render them around {children}
 - page.tsx files contain ONLY page-specific content sections — no nav, no footer, no header chrome
-- All reusable sections (HeroSection, FeaturesGrid, TestimonialsSection etc.) must be separate component files imported into page.tsx, not defined inline
+- page.tsx may ONLY import components that are explicitly listed as files being generated in THIS response — never invent import paths for files not in this list
 - Every component file is independently editable without touching page.tsx
 
 Every file must be 100% complete and functional. Use ${q.styling === "tailwind" ? "Tailwind CSS classes" : q.styling} for styling.
