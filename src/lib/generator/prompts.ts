@@ -87,11 +87,13 @@ ${q.features?.includes("analytics") ? "- @vercel/analytics: ^1.3.0" : ""}
 ${q.features?.includes("pwa") ? "- @ducanh2912/next-pwa: ^10.0.0" : ""}
 ${q.project_type === "game" ? "- phaser: ^3.86.0" : ""}
 
-Include an "overrides" field to force React 19 across all transitive deps that may still declare older peer versions:
+Include an "overrides" field to force React 19 across all transitive deps that may still declare older peer versions${q.dev_os === "macos_catalina" ? `, and pin esbuild + tsx to versions that support macOS 10.15 Catalina (esbuild 0.20+ requires macOS 12)` : ""}:
 {
   "overrides": {
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0"${q.dev_os === "macos_catalina" ? `,
+    "esbuild": "0.17.19",
+    "tsx": "3.14.0"` : ""}
   }
 }
 
@@ -937,7 +939,9 @@ ${q.database === "supabase" ? "- Supabase account (free tier works)" : ""}
 ${q.payments === "stripe" ? "- Stripe account" : ""}
 
 ${q.dev_os === "windows" ? `> **Windows users:** These commands use PowerShell. If you prefer, install [Git Bash](https://gitforwindows.org/) or enable WSL2 for a Linux-like experience.` : ""}
-${q.dev_os === "macos_catalina" ? `> **macOS Catalina note:** If you encounter issues installing Node.js, use [nvm](https://github.com/nvm-sh/nvm): \`curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash\` then \`nvm install ${q.node_version ?? "18"}\`\n> Some native packages may require Xcode Command Line Tools: \`xcode-select --install\`` : ""}
+${q.dev_os === "macos_catalina" ? `> **macOS Catalina (10.15) note:** This project's \`package.json\` already pins \`esbuild\` and \`tsx\` to versions compatible with Catalina — newer versions require macOS 12+. If you see \`dyld: Symbol not found\` errors, ensure you haven't removed the \`overrides\` field.
+> - Install Node.js via nvm: \`curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash\` then \`nvm install ${q.node_version ?? "18"}\`
+> - Install Xcode CLI tools if prompted: \`xcode-select --install\`` : ""}
 
 ### Installation
 
