@@ -111,7 +111,7 @@ ${q.database === "firebase" ? "- firebase: ^11.0.0" : ""}
 ${q.auth === "nextauth" ? "- next-auth: ^5.0.0" : ""}
 ${q.auth === "clerk" ? "- @clerk/nextjs: ^6.0.0" : ""}
 ${q.auth === "lucia" ? "- lucia: ^3.0.0, oslo: ^1.2.0" : ""}
-${q.payments === "stripe" ? "- stripe: ^17.0.0, @stripe/stripe-js: ^4.0.0" : ""}
+${q.payments === "stripe" ? "- stripe: ^17.0.0, @stripe/stripe-js: ^5.0.0 (DO NOT add @stripe/react-stripe-js — it is not needed)" : ""}
 ${q.payments === "lemonsqueezy" ? "- @lemonsqueezy/lemonsqueezy-js: ^1.3.0" : ""}
 ${q.extra_apis?.includes("resend") ? "- resend: ^4.0.0" : ""}
 ${q.extra_apis?.includes("openai") ? "- openai: ^4.70.0" : ""}
@@ -147,6 +147,8 @@ ${q.framework === "nextjs" || q.framework === "remix" || q.framework === "astro"
 }` : ""}
 
 Include an "engines" field: { "node": ">=${q.node_version ?? "18"}.0.0" }
+
+CRITICAL: Do NOT add any packages not listed above. Do NOT invent or guess at additional dependencies. Only include the packages explicitly listed in this prompt. If a dependency is not listed here, the project does not need it.
 
 Return ONLY the raw JSON content of package.json. No markdown, no explanation.`;
 }
