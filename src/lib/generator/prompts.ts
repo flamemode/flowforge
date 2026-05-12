@@ -381,6 +381,13 @@ ${stackSummary(q)}
 Files to generate:
 ${files.map(f => `- ${f}`).join("\n\n")}
 
+CRITICAL component structure rules:
+- NEVER put Navbar, Footer, Sidebar, or any reusable UI inside page.tsx inline — always import them from @/components/layout/Navbar, @/components/layout/Footer etc.
+- src/app/layout.tsx must import <Navbar /> and <Footer /> from @/components/layout/ and render them around {children}
+- page.tsx files contain ONLY page-specific content sections — no nav, no footer, no header chrome
+- All reusable sections (HeroSection, FeaturesGrid, TestimonialsSection etc.) must be separate component files imported into page.tsx, not defined inline
+- Every component file is independently editable without touching page.tsx
+
 Every file must be 100% complete and functional. Use ${q.styling === "tailwind" ? "Tailwind CSS classes" : q.styling} for styling.
 
 ${jsonInstruction()}`;
@@ -548,6 +555,8 @@ Requirements:
 - Pages should fetch real data from ${q.database !== "none" ? q.database : "local state or mock data"}
 - Use @/ path alias for all imports
 - Apply ${q.design_style} design style and ${q.color_scheme} color scheme consistently
+- page.tsx files import components from @/components/ — never define reusable UI inline in a page file
+- Each logical section of a page (hero, product grid, filters, cart summary) must be its own component file
 
 ${jsonInstruction()}`;
 }
