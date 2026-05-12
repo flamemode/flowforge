@@ -112,10 +112,10 @@ export function getConfigFilesPrompt(q: ProjectQuestionnaire): string {
 ${stackSummary(q)}
 
 Generate ALL of these files exactly as named:
-${q.framework === "nextjs" ? `- "next.config.ts" — Next.js 15 config.${q.cms === "payload" ? ` Must use: import { withPayload } from '@payloadcms/next/withPayload'; export default withPayload(nextConfig); — the export is named "withPayload" (NOT withPayloadCMS, NOT default export).` : " Minimal config with images remotePatterns if cloudinary/supabase used."}
-- "tsconfig.json" — TypeScript config. compilerOptions: target ES2017, lib [dom, dom.iterable, esnext], jsx preserve, strict true, moduleResolution bundler, paths {"@/*": ["./src/*"]}.
-- "postcss.config.mjs" — PostCSS config${q.styling === "tailwind" ? ` with @tailwindcss/postcss plugin` : ""}.
-${q.styling === "tailwind" ? `- "src/app/globals.css" — Tailwind v4: @import "tailwindcss"; then CSS custom properties for theme colors, fonts, spacing based on the ${q.design_style} design style and ${q.color_scheme} color scheme.` : ""}` : ""}
+${q.framework === "nextjs" ? `- "next.config.ts" — Next.js 15 config.${q.cms === "payload" ? ` Must use: import { withPayload } from '@payloadcms/next/withPayload'; export default withPayload(nextConfig);` : ""} Valid top-level keys ONLY: images, reactStrictMode, experimental, env, redirects, rewrites, headers${q.cms === "payload" ? ", withPayload wrapper" : ""}. NEVER add typescript, eslint, or compiler keys — those belong in tsconfig.json not here. Keep it minimal.
+- "tsconfig.json" — TypeScript config. compilerOptions: target ES2017, lib [dom, dom.iterable, esnext], jsx preserve, strict true, moduleResolution bundler, paths {"@/*": ["./src/*"]}. TypeScript strict mode goes HERE, not in next.config.ts.
+- "postcss.config.mjs" — PostCSS config${q.styling === "tailwind" ? ` with @tailwindcss/postcss plugin: export default { plugins: { '@tailwindcss/postcss': {} } }` : ""}.
+${q.styling === "tailwind" ? `- "src/app/globals.css" — CRITICAL: This project uses Tailwind CSS v4. The ONLY correct first line is: @import "tailwindcss"; — do NOT use @tailwind base, @tailwind components, or @tailwind utilities (those are Tailwind v3 and will cause a fatal error). After the import, add CSS custom properties for theme colors and fonts based on ${q.design_style} style and ${q.color_scheme} scheme.` : ""}` : ""}
 ${q.framework === "astro" ? `- "astro.config.mjs" — Astro config
 - "tsconfig.json" — TypeScript config for Astro` : ""}
 ${q.framework === "remix" ? `- "remix.config.js" — Remix config
