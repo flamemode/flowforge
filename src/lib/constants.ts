@@ -154,6 +154,48 @@ export const EXTRA_API_OPTIONS = [
   { value: "twilio", label: "Twilio", description: "SMS / voice" },
 ] as const;
 
+// ─── Mobile options ───────────────────────────────────────────────────────────
+
+export const MOBILE_APP_TYPE_OPTIONS = [
+  { value: "social", label: "Social Network", icon: "👥" },
+  { value: "ecommerce", label: "E-Commerce", icon: "🛒" },
+  { value: "fitness", label: "Fitness & Health", icon: "💪" },
+  { value: "finance", label: "Finance & Banking", icon: "💰" },
+  { value: "food_delivery", label: "Food & Delivery", icon: "🍔" },
+  { value: "productivity", label: "Productivity", icon: "✅" },
+  { value: "education", label: "Education", icon: "📚" },
+  { value: "news", label: "News & Media", icon: "📰" },
+  { value: "travel", label: "Travel & Maps", icon: "✈️" },
+  { value: "game", label: "Game", icon: "🎮" },
+] as const;
+
+export const MOBILE_FRAMEWORK_OPTIONS = [
+  { value: "expo", label: "Expo (React Native)", description: "Cross-platform iOS + Android with TypeScript" },
+  { value: "flutter", label: "Flutter", description: "Cross-platform iOS + Android with Dart" },
+  { value: "swift", label: "Swift + SwiftUI", description: "Native iOS only" },
+  { value: "kotlin", label: "Kotlin + Jetpack Compose", description: "Native Android only" },
+] as const;
+
+export const MOBILE_BACKEND_OPTIONS = [
+  { value: "supabase", label: "Supabase", description: "Postgres + Auth + Realtime" },
+  { value: "firebase", label: "Firebase", description: "Google NoSQL + Auth + FCM" },
+  { value: "rest_api", label: "Custom REST API", description: "Fetch from your own API" },
+  { value: "none", label: "None", description: "Local only / offline app" },
+] as const;
+
+export const MOBILE_FEATURE_OPTIONS = [
+  { value: "push_notifications", label: "Push Notifications", description: "Send alerts to users" },
+  { value: "camera", label: "Camera & Photos", description: "Take photos, access gallery" },
+  { value: "maps", label: "Maps & Location", description: "Show maps, get GPS location" },
+  { value: "biometric_auth", label: "Biometric Auth", description: "Face ID / fingerprint login" },
+  { value: "offline_mode", label: "Offline Mode", description: "Works without internet" },
+  { value: "in_app_purchases", label: "In-App Purchases", description: "Sell features or subscriptions" },
+  { value: "social_login", label: "Social Login", description: "Sign in with Google / Apple" },
+  { value: "dark_mode", label: "Dark Mode", description: "Light and dark theme" },
+  { value: "analytics", label: "Analytics", description: "Track user behaviour" },
+  { value: "deep_linking", label: "Deep Linking", description: "Open app from URLs" },
+] as const;
+
 // ─── File language detection ──────────────────────────────────────────────────
 
 export const FILE_LANGUAGE_MAP: Record<string, string> = {
@@ -173,4 +215,5 @@ export const FILE_LANGUAGE_MAP: Record<string, string> = {
   yml: "yaml",
   yaml: "yaml",
   toml: "toml",
+  dart: "dart",
 };

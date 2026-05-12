@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateProject } from "@/lib/generator/generator";
 import type { GenerationEvent } from "@/lib/generator/generator";
+import { generateMobileProject } from "@/lib/generator/mobile-generator";
 
 export const maxDuration = 300;
 
@@ -59,7 +60,8 @@ export async function POST(
       };
 
       try {
-        const files = await generateProject(project.questionnaire, onEvent);
+        const generateFn = project.questionnaire.platform === "mobile" ? generateMobileProject : generateProject;
+        const files = await generateFn(project.questionnaire, onEvent);
 
         // Save files in batches of 20 to avoid Supabase payload size limits
         if (files.length > 0) {

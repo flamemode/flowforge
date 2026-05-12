@@ -1,5 +1,11 @@
 export type SubscriptionTier = "free" | "pro" | "team" | "agency";
 
+export type Platform = "web" | "mobile";
+export type MobileAppType = "social" | "ecommerce" | "fitness" | "finance" | "food_delivery" | "productivity" | "education" | "news" | "travel" | "game";
+export type MobileFramework = "expo" | "flutter" | "swift" | "kotlin";
+export type MobileBackend = "supabase" | "firebase" | "rest_api" | "none";
+export type MobileFeature = "push_notifications" | "camera" | "maps" | "biometric_auth" | "offline_mode" | "in_app_purchases" | "social_login" | "dark_mode" | "analytics" | "deep_linking";
+
 export type CreditPackId = "starter" | "studio" | "agency";
 
 export interface CreditPack {
@@ -105,21 +111,28 @@ export type ExtraAPI =
   | "twilio";
 
 export interface ProjectQuestionnaire {
-  project_type: ProjectType;
-  framework: Framework;
-  language: Language;
-  styling: Styling;
-  database: Database;
-  cms: CMS;
-  auth: AuthProvider;
-  payments: PaymentProvider;
-  extra_apis: ExtraAPI[];
-  design_style: DesignStyle;
-  color_scheme: ColorScheme;
-  animations: AnimationLevel;
-  features: ProjectFeature[];
+  platform: Platform;
+  // Web fields (optional since mobile won't use them)
+  project_type?: ProjectType;
+  framework?: Framework;
+  language?: Language;
+  styling?: Styling;
+  database?: Database;
+  cms?: CMS;
+  auth?: AuthProvider;
+  payments?: PaymentProvider;
+  extra_apis?: ExtraAPI[];
+  design_style?: DesignStyle;
+  color_scheme?: ColorScheme;
+  animations?: AnimationLevel;
+  features?: ProjectFeature[];
   description: string;
   project_name: string;
+  // Mobile fields
+  mobile_app_type?: MobileAppType;
+  mobile_framework?: MobileFramework;
+  mobile_backend?: MobileBackend;
+  mobile_features?: MobileFeature[];
 }
 
 // ─── Generated project ────────────────────────────────────────────────────────

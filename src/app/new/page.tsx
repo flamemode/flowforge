@@ -17,12 +17,17 @@ import {
   COLOR_SCHEME_OPTIONS,
   ANIMATION_OPTIONS,
   FEATURE_OPTIONS,
+  MOBILE_APP_TYPE_OPTIONS,
+  MOBILE_FRAMEWORK_OPTIONS,
+  MOBILE_BACKEND_OPTIONS,
+  MOBILE_FEATURE_OPTIONS,
 } from "@/lib/constants";
 import type { ProjectQuestionnaire } from "@/types";
 import { ChevronRight, ChevronLeft, Zap } from "lucide-react";
 import Link from "next/link";
 
-const STEPS = [
+// Web steps (indices 1–10 in the combined flow)
+const WEB_STEPS = [
   "Project type",
   "Framework",
   "Language & Styling",
@@ -35,7 +40,19 @@ const STEPS = [
   "Describe it",
 ];
 
+// Mobile steps (indices 1–7 in the combined flow)
+const MOBILE_STEPS = [
+  "App Type",
+  "Framework",
+  "Backend",
+  "Auth & Payments",
+  "Features",
+  "Design & Feel",
+  "Describe it",
+];
+
 const empty: ProjectQuestionnaire = {
+  platform: "web",
   project_type: "saas",
   framework: "nextjs",
   language: "typescript",
@@ -49,16 +66,24 @@ const empty: ProjectQuestionnaire = {
   color_scheme: "dark",
   animations: "subtle",
   features: [],
+  mobile_features: [],
   description: "",
   project_name: "",
 };
 
 export default function NewProjectPage() {
   const router = useRouter();
+  // step 0 = platform selector; step 1+ = platform-specific steps
   const [step, setStep] = useState(0);
   const [q, setQ] = useState<ProjectQuestionnaire>(empty);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isMobile = q.platform === "mobile";
+  const platformSteps = isMobile ? MOBILE_STEPS : WEB_STEPS;
+  // Total steps: 0 (platform) + platformSteps
+  const totalSteps = 1 + platformSteps.length;
+  const currentLabel = step === 0 ? "Platform" : platformSteps[step - 1];
 
   const set = <K extends keyof ProjectQuestionnaire>(key: K, val: ProjectQuestionnaire[K]) =>
     setQ((prev) => ({ ...prev, [key]: val }));
@@ -66,21 +91,31 @@ export default function NewProjectPage() {
   const toggleApi = (val: string) =>
     setQ((prev) => ({
       ...prev,
-      extra_apis: prev.extra_apis.includes(val as never)
-        ? prev.extra_apis.filter((a) => a !== val)
-        : [...prev.extra_apis, val as never],
+      extra_apis: (prev.extra_apis ?? []).includes(val as never)
+        ? (prev.extra_apis ?? []).filter((a) => a !== val)
+        : [...(prev.extra_apis ?? []), val as never],
     }));
 
   const toggleFeature = (val: string) =>
     setQ((prev) => ({
       ...prev,
-      features: prev.features.includes(val as never)
-        ? prev.features.filter((f) => f !== val)
-        : [...prev.features, val as never],
+      features: (prev.features ?? []).includes(val as never)
+        ? (prev.features ?? []).filter((f) => f !== val)
+        : [...(prev.features ?? []), val as never],
     }));
 
+  const toggleMobileFeature = (val: string) =>
+    setQ((prev) => ({
+      ...prev,
+      mobile_features: (prev.mobile_features ?? []).includes(val as never)
+        ? (prev.mobile_features ?? []).filter((f) => f !== val)
+        : [...(prev.mobile_features ?? []), val as never],
+    }));
+
+  const isLastStep = step === totalSteps - 1;
+
   const canNext = () => {
-    if (step === STEPS.length - 1) return q.description.trim().length > 10 && q.project_name.trim().length > 0;
+    if (isLastStep) return q.description.trim().length > 10 && q.project_name.trim().length > 0;
     return true;
   };
 
@@ -109,6 +144,10 @@ export default function NewProjectPage() {
     }
   };
 
+  // ─── Step label helper ──────────────────────────────────────────────────────
+
+  const allStepLabels = ["Platform", ...platformSteps];
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <header className="border-b border-zinc-800 h-14 flex items-center px-6">
@@ -123,7 +162,7 @@ export default function NewProjectPage() {
       <main className="max-w-2xl mx-auto px-6 py-12">
         {/* Progress */}
         <div className="flex items-center gap-1 mb-10">
-          {STEPS.map((s, i) => (
+          {allStepLabels.map((s, i) => (
             <div key={s} className="flex items-center gap-1 flex-1">
               <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                 i < step ? "bg-violet-600 text-white" :
@@ -132,21 +171,65 @@ export default function NewProjectPage() {
               }`}>
                 {i < step ? "✓" : i + 1}
               </div>
-              {i < STEPS.length - 1 && (
+              {i < allStepLabels.length - 1 && (
                 <div className={`h-0.5 flex-1 ${i < step ? "bg-violet-600" : "bg-zinc-800"}`} />
               )}
             </div>
           ))}
         </div>
 
-        <h2 className="text-2xl font-bold mb-2">{STEPS[step]}</h2>
-        <p className="text-zinc-400 mb-8 text-sm">Step {step + 1} of {STEPS.length}</p>
+        <h2 className="text-2xl font-bold mb-2">{currentLabel}</h2>
+        <p className="text-zinc-400 mb-8 text-sm">Step {step + 1} of {totalSteps}</p>
 
         {/* Step content */}
         <div className="space-y-3">
 
-          {/* Step 0 — Project type */}
+          {/* ── Step 0 — Platform ────────────────────────────────────────────── */}
           {step === 0 && (
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => {
+                  set("platform", "web");
+                  setStep(1);
+                }}
+                className={`flex flex-col items-center gap-4 p-8 rounded-2xl border text-left transition-all ${
+                  q.platform === "web"
+                    ? "border-violet-500 bg-violet-500/10"
+                    : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                }`}
+              >
+                <span className="text-5xl">🌐</span>
+                <div>
+                  <div className="font-bold text-white text-lg text-center">Web App</div>
+                  <div className="text-xs text-zinc-400 mt-1 text-center">Next.js, Remix, Astro, Vue…</div>
+                </div>
+              </button>
+              <button
+                onClick={() => {
+                  set("platform", "mobile");
+                  setStep(1);
+                }}
+                className={`flex flex-col items-center gap-4 p-8 rounded-2xl border text-left transition-all ${
+                  q.platform === "mobile"
+                    ? "border-violet-500 bg-violet-500/10"
+                    : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                }`}
+              >
+                <span className="text-5xl">📱</span>
+                <div>
+                  <div className="font-bold text-white text-lg text-center">Mobile App</div>
+                  <div className="text-xs text-zinc-400 mt-1 text-center">Expo, Flutter, Swift, Kotlin…</div>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {/* ════════════════════════════════════════════════════════════════════
+              WEB STEPS (step 1–10)
+          ════════════════════════════════════════════════════════════════════ */}
+
+          {/* Web Step 1 — Project type */}
+          {!isMobile && step === 1 && (
             <div className="grid grid-cols-2 gap-3">
               {PROJECT_TYPE_OPTIONS.map((opt) => (
                 <button
@@ -165,8 +248,8 @@ export default function NewProjectPage() {
             </div>
           )}
 
-          {/* Step 1 — Framework */}
-          {step === 1 && (
+          {/* Web Step 2 — Framework */}
+          {!isMobile && step === 2 && (
             <div className="space-y-3">
               {FRAMEWORK_OPTIONS.map((opt) => (
                 <button
@@ -185,8 +268,8 @@ export default function NewProjectPage() {
             </div>
           )}
 
-          {/* Step 2 — Language & Styling */}
-          {step === 2 && (
+          {/* Web Step 3 — Language & Styling */}
+          {!isMobile && step === 3 && (
             <div className="space-y-6">
               <div>
                 <p className="text-sm font-medium text-zinc-400 mb-3">Language</p>
@@ -229,8 +312,8 @@ export default function NewProjectPage() {
             </div>
           )}
 
-          {/* Step 3 — Database */}
-          {step === 3 && (
+          {/* Web Step 4 — Database */}
+          {!isMobile && step === 4 && (
             <div className="space-y-3">
               {DATABASE_OPTIONS.map((opt) => (
                 <button
@@ -249,8 +332,8 @@ export default function NewProjectPage() {
             </div>
           )}
 
-          {/* Step 4 — CMS */}
-          {step === 4 && (
+          {/* Web Step 5 — CMS */}
+          {!isMobile && step === 5 && (
             <div className="space-y-3">
               {CMS_OPTIONS.map((opt) => (
                 <button
@@ -269,8 +352,8 @@ export default function NewProjectPage() {
             </div>
           )}
 
-          {/* Step 5 — Auth & Payments */}
-          {step === 5 && (
+          {/* Web Step 6 — Auth & Payments */}
+          {!isMobile && step === 6 && (
             <div className="space-y-6">
               <div>
                 <p className="text-sm font-medium text-zinc-400 mb-3">Authentication</p>
@@ -313,13 +396,13 @@ export default function NewProjectPage() {
             </div>
           )}
 
-          {/* Step 6 — Extra APIs */}
-          {step === 6 && (
+          {/* Web Step 7 — Extra APIs */}
+          {!isMobile && step === 7 && (
             <div>
               <p className="text-sm text-zinc-400 mb-4">Select all that apply — or skip if none needed.</p>
               <div className="grid grid-cols-2 gap-3">
                 {EXTRA_API_OPTIONS.map((opt) => {
-                  const selected = q.extra_apis.includes(opt.value as never);
+                  const selected = (q.extra_apis ?? []).includes(opt.value as never);
                   return (
                     <button
                       key={opt.value}
@@ -339,8 +422,8 @@ export default function NewProjectPage() {
             </div>
           )}
 
-          {/* Step 7 — Design & Feel */}
-          {step === 7 && (
+          {/* Web Step 8 — Design & Feel */}
+          {!isMobile && step === 8 && (
             <div className="space-y-6">
               <div>
                 <p className="text-sm font-medium text-zinc-400 mb-3">Design style</p>
@@ -402,13 +485,13 @@ export default function NewProjectPage() {
             </div>
           )}
 
-          {/* Step 8 — Features */}
-          {step === 8 && (
+          {/* Web Step 9 — Features */}
+          {!isMobile && step === 9 && (
             <div>
               <p className="text-sm text-zinc-400 mb-4">Select features to include — or skip to keep it lean.</p>
               <div className="grid grid-cols-2 gap-3">
                 {FEATURE_OPTIONS.map((opt) => {
-                  const selected = q.features.includes(opt.value as never);
+                  const selected = (q.features ?? []).includes(opt.value as never);
                   return (
                     <button
                       key={opt.value}
@@ -428,8 +511,205 @@ export default function NewProjectPage() {
             </div>
           )}
 
-          {/* Step 9 — Describe */}
-          {step === 9 && (
+          {/* ════════════════════════════════════════════════════════════════════
+              MOBILE STEPS (step 1–7)
+          ════════════════════════════════════════════════════════════════════ */}
+
+          {/* Mobile Step 1 — App Type */}
+          {isMobile && step === 1 && (
+            <div className="grid grid-cols-2 gap-3">
+              {MOBILE_APP_TYPE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => set("mobile_app_type", opt.value as ProjectQuestionnaire["mobile_app_type"])}
+                  className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${
+                    q.mobile_app_type === opt.value
+                      ? "border-violet-500 bg-violet-500/10 text-white"
+                      : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-600"
+                  }`}
+                >
+                  <span className="text-2xl">{opt.icon}</span>
+                  <span className="font-medium">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Mobile Step 2 — Framework */}
+          {isMobile && step === 2 && (
+            <div className="space-y-3">
+              {MOBILE_FRAMEWORK_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => set("mobile_framework", opt.value as ProjectQuestionnaire["mobile_framework"])}
+                  className={`w-full flex items-center justify-between p-4 rounded-xl border text-left transition-all ${
+                    q.mobile_framework === opt.value
+                      ? "border-violet-500 bg-violet-500/10"
+                      : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                  }`}
+                >
+                  <span className="font-medium text-white">{opt.label}</span>
+                  <span className="text-sm text-zinc-400">{opt.description}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Mobile Step 3 — Backend */}
+          {isMobile && step === 3 && (
+            <div className="space-y-3">
+              {MOBILE_BACKEND_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => set("mobile_backend", opt.value as ProjectQuestionnaire["mobile_backend"])}
+                  className={`w-full flex items-center justify-between p-4 rounded-xl border text-left transition-all ${
+                    q.mobile_backend === opt.value
+                      ? "border-violet-500 bg-violet-500/10"
+                      : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                  }`}
+                >
+                  <span className="font-medium text-white">{opt.label}</span>
+                  <span className="text-sm text-zinc-400">{opt.description}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Mobile Step 4 — Auth & Payments */}
+          {isMobile && step === 4 && (
+            <div className="space-y-6">
+              <div>
+                <p className="text-sm font-medium text-zinc-400 mb-3">Authentication</p>
+                <div className="space-y-2">
+                  {AUTH_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => set("auth", opt.value as ProjectQuestionnaire["auth"])}
+                      className={`w-full flex items-center justify-between p-4 rounded-xl border text-left transition-all ${
+                        q.auth === opt.value
+                          ? "border-violet-500 bg-violet-500/10"
+                          : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                      }`}
+                    >
+                      <span className="font-medium text-white">{opt.label}</span>
+                      <span className="text-sm text-zinc-400">{opt.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-zinc-400 mb-3">Payments</p>
+                <div className="space-y-2">
+                  {PAYMENT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => set("payments", opt.value as ProjectQuestionnaire["payments"])}
+                      className={`w-full flex items-center justify-between p-4 rounded-xl border text-left transition-all ${
+                        q.payments === opt.value
+                          ? "border-violet-500 bg-violet-500/10"
+                          : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                      }`}
+                    >
+                      <span className="font-medium text-white">{opt.label}</span>
+                      <span className="text-sm text-zinc-400">{opt.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Mobile Step 5 — Features */}
+          {isMobile && step === 5 && (
+            <div>
+              <p className="text-sm text-zinc-400 mb-4">Select mobile features to include — or skip to keep it lean.</p>
+              <div className="grid grid-cols-2 gap-3">
+                {MOBILE_FEATURE_OPTIONS.map((opt) => {
+                  const selected = (q.mobile_features ?? []).includes(opt.value as never);
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => toggleMobileFeature(opt.value)}
+                      className={`p-4 rounded-xl border text-left transition-all ${
+                        selected
+                          ? "border-violet-500 bg-violet-500/10"
+                          : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                      }`}
+                    >
+                      <div className="font-medium text-white">{opt.label}</div>
+                      <div className="text-xs text-zinc-400 mt-1">{opt.description}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Mobile Step 6 — Design & Feel */}
+          {isMobile && step === 6 && (
+            <div className="space-y-6">
+              <div>
+                <p className="text-sm font-medium text-zinc-400 mb-3">Design style</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {DESIGN_STYLE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => set("design_style", opt.value as ProjectQuestionnaire["design_style"])}
+                      className={`p-4 rounded-xl border text-left transition-all ${
+                        q.design_style === opt.value
+                          ? "border-violet-500 bg-violet-500/10"
+                          : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                      }`}
+                    >
+                      <div className="font-medium text-white">{opt.label}</div>
+                      <div className="text-xs text-zinc-400 mt-1">{opt.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-zinc-400 mb-3">Color scheme</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {COLOR_SCHEME_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => set("color_scheme", opt.value as ProjectQuestionnaire["color_scheme"])}
+                      className={`p-4 rounded-xl border text-left transition-all ${
+                        q.color_scheme === opt.value
+                          ? "border-violet-500 bg-violet-500/10"
+                          : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                      }`}
+                    >
+                      <div className="font-medium text-white text-sm">{opt.label}</div>
+                      <div className="text-xs text-zinc-400 mt-1">{opt.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-zinc-400 mb-3">Animations</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {ANIMATION_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => set("animations", opt.value as ProjectQuestionnaire["animations"])}
+                      className={`p-4 rounded-xl border text-left transition-all ${
+                        q.animations === opt.value
+                          ? "border-violet-500 bg-violet-500/10"
+                          : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                      }`}
+                    >
+                      <div className="font-medium text-white">{opt.label}</div>
+                      <div className="text-xs text-zinc-400 mt-1">{opt.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Last step — Describe (shared web step 9 / mobile step 7) ──── */}
+          {isLastStep && (
             <div className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-zinc-400 mb-2">Project name</label>
@@ -447,7 +727,11 @@ export default function NewProjectPage() {
                   value={q.description}
                   onChange={(e) => set("description", e.target.value)}
                   rows={5}
-                  placeholder="e.g. A SaaS app for freelance photographers to share galleries with clients, collect feedback, and receive payments via Stripe."
+                  placeholder={
+                    isMobile
+                      ? "e.g. A fitness app where users log workouts, track progress with charts, and connect with friends."
+                      : "e.g. A SaaS app for freelance photographers to share galleries with clients, collect feedback, and receive payments via Stripe."
+                  }
                   className="w-full px-4 py-3 rounded-xl bg-zinc-900 border border-zinc-700 text-white placeholder:text-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 resize-none"
                 />
                 <p className="text-xs text-zinc-500 mt-1">{q.description.length} chars — aim for 20–300</p>
@@ -456,29 +740,56 @@ export default function NewProjectPage() {
               {/* Summary */}
               <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-4 text-sm space-y-1">
                 <p className="font-semibold text-zinc-300 mb-2">Your stack</p>
-                {[
-                  ["Type", PROJECT_TYPE_OPTIONS.find(o => o.value === q.project_type)?.label],
-                  ["Framework", FRAMEWORK_OPTIONS.find(o => o.value === q.framework)?.label],
-                  ["Language", q.language === "typescript" ? "TypeScript" : "JavaScript"],
-                  ["Styling", STYLING_OPTIONS.find(o => o.value === q.styling)?.label],
-                  ["Database", DATABASE_OPTIONS.find(o => o.value === q.database)?.label],
-                  q.cms !== "none" ? ["CMS", CMS_OPTIONS.find(o => o.value === q.cms)?.label] : null,
-                  q.auth !== "none" ? ["Auth", AUTH_OPTIONS.find(o => o.value === q.auth)?.label] : null,
-                  q.payments !== "none" ? ["Payments", PAYMENT_OPTIONS.find(o => o.value === q.payments)?.label] : null,
-                  q.extra_apis.length > 0 ? ["APIs", q.extra_apis.join(", ")] : null,
-                  ["Design", DESIGN_STYLE_OPTIONS.find(o => o.value === q.design_style)?.label],
-                  ["Colors", COLOR_SCHEME_OPTIONS.find(o => o.value === q.color_scheme)?.label],
-                  ["Motion", ANIMATION_OPTIONS.find(o => o.value === q.animations)?.label],
-                  q.features.length > 0 ? ["Features", q.features.join(", ")] : null,
-                ].filter(Boolean).map((row) => {
-                  const [k, v] = row as [string, string];
-                  return (
-                    <div key={k} className="flex gap-2">
-                      <span className="text-zinc-500 w-20 flex-shrink-0">{k}</span>
-                      <span className="text-zinc-200">{v}</span>
-                    </div>
-                  );
-                })}
+                {isMobile ? (
+                  <>
+                    {[
+                      ["Platform", "Mobile App"],
+                      q.mobile_app_type ? ["App type", MOBILE_APP_TYPE_OPTIONS.find(o => o.value === q.mobile_app_type)?.label] : null,
+                      q.mobile_framework ? ["Framework", MOBILE_FRAMEWORK_OPTIONS.find(o => o.value === q.mobile_framework)?.label] : null,
+                      q.mobile_backend ? ["Backend", MOBILE_BACKEND_OPTIONS.find(o => o.value === q.mobile_backend)?.label] : null,
+                      q.auth && q.auth !== "none" ? ["Auth", AUTH_OPTIONS.find(o => o.value === q.auth)?.label] : null,
+                      q.payments && q.payments !== "none" ? ["Payments", PAYMENT_OPTIONS.find(o => o.value === q.payments)?.label] : null,
+                      q.mobile_features && q.mobile_features.length > 0 ? ["Features", q.mobile_features.join(", ")] : null,
+                      q.design_style ? ["Design", DESIGN_STYLE_OPTIONS.find(o => o.value === q.design_style)?.label] : null,
+                      q.color_scheme ? ["Colors", COLOR_SCHEME_OPTIONS.find(o => o.value === q.color_scheme)?.label] : null,
+                    ].filter(Boolean).map((row) => {
+                      const [k, v] = row as [string, string];
+                      return (
+                        <div key={k} className="flex gap-2">
+                          <span className="text-zinc-500 w-20 flex-shrink-0">{k}</span>
+                          <span className="text-zinc-200">{v}</span>
+                        </div>
+                      );
+                    })}
+                  </>
+                ) : (
+                  <>
+                    {[
+                      ["Platform", "Web App"],
+                      ["Type", PROJECT_TYPE_OPTIONS.find(o => o.value === q.project_type)?.label],
+                      ["Framework", FRAMEWORK_OPTIONS.find(o => o.value === q.framework)?.label],
+                      ["Language", q.language === "typescript" ? "TypeScript" : "JavaScript"],
+                      ["Styling", STYLING_OPTIONS.find(o => o.value === q.styling)?.label],
+                      ["Database", DATABASE_OPTIONS.find(o => o.value === q.database)?.label],
+                      q.cms !== "none" ? ["CMS", CMS_OPTIONS.find(o => o.value === q.cms)?.label] : null,
+                      q.auth !== "none" ? ["Auth", AUTH_OPTIONS.find(o => o.value === q.auth)?.label] : null,
+                      q.payments !== "none" ? ["Payments", PAYMENT_OPTIONS.find(o => o.value === q.payments)?.label] : null,
+                      q.extra_apis && q.extra_apis.length > 0 ? ["APIs", q.extra_apis.join(", ")] : null,
+                      ["Design", DESIGN_STYLE_OPTIONS.find(o => o.value === q.design_style)?.label],
+                      ["Colors", COLOR_SCHEME_OPTIONS.find(o => o.value === q.color_scheme)?.label],
+                      ["Motion", ANIMATION_OPTIONS.find(o => o.value === q.animations)?.label],
+                      q.features && q.features.length > 0 ? ["Features", q.features.join(", ")] : null,
+                    ].filter(Boolean).map((row) => {
+                      const [k, v] = row as [string, string];
+                      return (
+                        <div key={k} className="flex gap-2">
+                          <span className="text-zinc-500 w-20 flex-shrink-0">{k}</span>
+                          <span className="text-zinc-200">{v}</span>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
               </div>
 
               {error && (
@@ -486,6 +797,7 @@ export default function NewProjectPage() {
               )}
             </div>
           )}
+
         </div>
 
         {/* Navigation */}
@@ -500,11 +812,20 @@ export default function NewProjectPage() {
             Back
           </Button>
 
-          {step < STEPS.length - 1 ? (
-            <Button onClick={() => setStep((s) => s + 1)} className="bg-violet-600 hover:bg-violet-700">
-              Continue
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
+          {!isLastStep ? (
+            // On step 0 (platform), clicking the platform card auto-advances,
+            // but keep Continue button for cases where user came back
+            step === 0 ? (
+              <Button onClick={() => setStep(1)} className="bg-violet-600 hover:bg-violet-700">
+                Continue
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            ) : (
+              <Button onClick={() => setStep((s) => s + 1)} className="bg-violet-600 hover:bg-violet-700">
+                Continue
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            )
           ) : (
             <Button
               onClick={handleSubmit}

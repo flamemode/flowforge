@@ -25,11 +25,11 @@ function stackSummary(q: ProjectQuestionnaire): string {
     q.cms !== "none" ? `CMS: ${q.cms}` : null,
     q.auth !== "none" ? `Auth: ${q.auth}` : null,
     q.payments !== "none" ? `Payments: ${q.payments}` : null,
-    q.extra_apis?.length > 0 ? `Extra APIs: ${q.extra_apis.join(", ")}` : null,
+    q.extra_apis && q.extra_apis.length > 0 ? `Extra APIs: ${q.extra_apis.join(", ")}` : null,
     q.design_style ? `Design style: ${q.design_style}` : null,
     q.color_scheme ? `Color scheme: ${q.color_scheme}` : null,
     q.animations ? `Animations: ${q.animations}` : null,
-    q.features?.length > 0 ? `Features: ${q.features.join(", ")}` : null,
+    q.features && q.features.length > 0 ? `Features: ${q.features.join(", ")}` : null,
     `Description: ${q.description}`,
   ].filter(Boolean).join("\n");
 }
