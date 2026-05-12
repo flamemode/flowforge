@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle, Clock, AlertCircle, Trash2, X } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, Trash2 } from "lucide-react";
 import type { GeneratedProject } from "@/types";
 
 function statusIcon(status: string) {

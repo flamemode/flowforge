@@ -6,6 +6,8 @@ import {
   getEnvExamplePrompt,
   getDatabaseSchemaPrompt,
   getRootFilesPrompt,
+  getHomeSectionsPrompt,
+  getAuthPagesPrompt,
   getLibFilesPrompt,
   getFeaturePagesPrompt,
   getUIPrimitivesPrompt,
@@ -99,16 +101,130 @@ function parseJsonResponse(raw: string): Record<string, string> {
   try {
     return JSON.parse(cleaned);
   } catch {
-    // Attempt to fix truncated JSON by finding the last complete key-value pair
-    // and closing the object
-    const lastComma = cleaned.lastIndexOf('",\n');
-    if (lastComma !== -1) {
-      const partial = cleaned.slice(0, lastComma) + '"}';
-      try { return JSON.parse(partial); } catch { /* fall through */ }
+    // Attempt to fix truncated JSON by finding the last complete key-value pair.
+    // Strategy: find the last occurrence of a complete "key": "value" pair ending
+    // with either a comma+newline or just newline before the truncation point.
+    // We try progressively from the end to find a valid parse.
+    const patterns = ['",\n  "', '"\n}', '",\n"', '"\n'];
+    for (const pattern of patterns) {
+      let searchFrom = cleaned.length;
+      // Try up to 5 positions from the end
+      for (let i = 0; i < 5; i++) {
+        const pos = cleaned.lastIndexOf(pattern, searchFrom - 1);
+        if (pos === -1) break;
+        const candidate = cleaned.slice(0, pos + 1) + "\n}";
+        try {
+          const result = JSON.parse(candidate);
+          // Validate: drop the last entry if its value looks truncated
+          // (doesn't end with common file endings like }, ;, or a closing tag)
+          const keys = Object.keys(result);
+          if (keys.length > 0) {
+            const lastKey = keys[keys.length - 1];
+            const lastValue = result[lastKey];
+            if (lastValue && lastValue.length > 100 &&
+                !lastValue.trimEnd().match(/[;}\]>)`'"]\s*$/) &&
+                !lastValue.trimEnd().endsWith("*/")) {
+              // Last file is likely truncated — remove it
+              delete result[lastKey];
+            }
+          }
+          return result;
+        } catch { /* try next position */ }
+        searchFrom = pos;
+      }
     }
     console.error("Failed to parse JSON response:", cleaned.slice(0, 200));
     return {};
   }
+}
+
+function generateDeterministicConfigs(
+  q: ProjectQuestionnaire
+): Omit<GeneratedFile, "id" | "project_id" | "created_at">[] {
+  const files: Omit<GeneratedFile, "id" | "project_id" | "created_at">[] = [];
+
+  if (q.framework === "nextjs") {
+    // tsconfig.json — always the same structure for Next.js
+    files.push(makeFile("tsconfig.json", JSON.stringify({
+      compilerOptions: {
+        target: "ES2017",
+        lib: ["dom", "dom.iterable", "esnext"],
+        allowJs: true,
+        skipLibCheck: true,
+        strict: true,
+        noEmit: true,
+        esModuleInterop: true,
+        module: "esnext",
+        moduleResolution: "bundler",
+        resolveJsonModule: true,
+        isolatedModules: true,
+        jsx: "preserve",
+        incremental: true,
+        plugins: [{ name: "next" }],
+        paths: { "@/*": ["./src/*"] },
+      },
+      include: ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+      exclude: ["node_modules"],
+    }, null, 2)));
+
+    // next.config.ts — minimal, valid config
+    const nextConfigLines = [
+      `import type { NextConfig } from "next";`,
+      ``,
+      `const nextConfig: NextConfig = {`,
+      `  reactStrictMode: true,`,
+    ];
+    if (q.cms === "payload") {
+      nextConfigLines[0] = `import type { NextConfig } from "next";\nimport { withPayload } from "@payloadcms/next/withPayload";`;
+    }
+    nextConfigLines.push(`};`);
+    nextConfigLines.push(``);
+    if (q.cms === "payload") {
+      nextConfigLines.push(`export default withPayload(nextConfig);`);
+    } else {
+      nextConfigLines.push(`export default nextConfig;`);
+    }
+    files.push(makeFile("next.config.ts", nextConfigLines.join("\n")));
+
+    // postcss.config.mjs — critical for Tailwind v4
+    if (q.styling === "tailwind") {
+      files.push(makeFile("postcss.config.mjs", `/** @type {import('postcss-load-config').Config} */
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
+`));
+    }
+  }
+
+  // .gitignore — always the same
+  files.push(makeFile(".gitignore", [
+    "node_modules",
+    ".next",
+    "dist",
+    "build",
+    "out",
+    ".env",
+    ".env.local",
+    ".env*.local",
+    ".DS_Store",
+    "*.log",
+    ".vercel",
+    ".turbo",
+  ].join("\n")));
+
+  // .prettierrc
+  files.push(makeFile(".prettierrc", JSON.stringify({
+    semi: true,
+    singleQuote: false,
+    tabWidth: 2,
+    trailingComma: "es5",
+  }, null, 2)));
+
+  return files;
 }
 
 export async function generateProject(
@@ -155,13 +271,20 @@ export async function generateProject(
   };
 
   try {
-    // 1 — package.json (Haiku: simple JSON, 1500 tokens plenty)
+    // 1 — package.json (Sonnet: complex dependency resolution)
     onEvent({ type: "progress", data: { label: "Generating package.json..." } });
-    const pkgRaw = await callClaude(system, getPackageJsonPrompt(questionnaire), { model: HAIKU, maxTokens: 1500 });
+    const pkgRaw = await callClaude(system, getPackageJsonPrompt(questionnaire), { model: SONNET, maxTokens: 3000 });
     emit([makeFile("package.json", pkgRaw.replace(/^```[a-z]*\n?/gm, "").replace(/^```$/gm, "").trim())]);
 
-    // 2 — Config files (Haiku: templated configs, not complex logic)
-    await step("Generating config files...", () => getConfigFilesPrompt(questionnaire), { model: HAIKU, maxTokens: 3000 });
+    // 2a — Deterministic config files (never trust AI for these)
+    onEvent({ type: "progress", data: { label: "Generating config files..." } });
+    emit(generateDeterministicConfigs(questionnaire));
+
+    // 2b — Remaining config files from Claude (non-critical ones like .eslintrc)
+    const configPrompt = getConfigFilesPrompt(questionnaire);
+    if (configPrompt) {
+      await step("Generating config files...", () => configPrompt, { model: HAIKU, maxTokens: 4000 });
+    }
 
     // Overwrite globals.css deterministically — Claude consistently reverts to Tailwind v3 syntax
     if (questionnaire.styling === "tailwind") {
@@ -219,8 +342,20 @@ body {
       });
     }
 
-    // 5a — Root files: layout, page, globals, middleware, auth pages (Sonnet: real UI code)
-    await step("Generating app layout and pages...", () => getRootFilesPrompt(questionnaire), { maxTokens: 10000 });
+    // 5a — Root files: layout, page, not-found (Sonnet: core app shell)
+    await step("Generating app layout and pages...", () => getRootFilesPrompt(questionnaire), { maxTokens: 8000 });
+
+    // 5a-ii — Home section components (separate to avoid truncation)
+    const homeSectionsPrompt = getHomeSectionsPrompt(questionnaire);
+    if (homeSectionsPrompt) {
+      await step("Generating home sections...", () => homeSectionsPrompt, { maxTokens: 12000 });
+    }
+
+    // 5a-iii — Auth pages + middleware (separate call)
+    const authPrompt = getAuthPagesPrompt(questionnaire);
+    if (authPrompt) {
+      await step("Generating auth pages...", () => authPrompt, { maxTokens: 6000 });
+    }
 
     // 5b — Lib files: utils, clients (Sonnet)
     const libPrompt = getLibFilesPrompt(questionnaire);
@@ -297,6 +432,58 @@ export default function ThemeToggle() {
     onEvent({ type: "progress", data: { label: "Generating README..." } });
     const readmeRaw = await callClaude(system, getReadmePrompt(questionnaire), { model: HAIKU, maxTokens: 2000 });
     emit([makeFile("README.md", readmeRaw.replace(/^```[a-z]*\n?/gm, "").replace(/^```$/gm, "").trim())]);
+
+    // ─── Final validation: check for broken @/ imports and generate stubs ──────
+    const generatedPaths = new Set(allFiles.map(f => f.path));
+    const missingImports = new Map<string, string[]>();
+
+    for (const file of allFiles) {
+      if (!file.content) continue;
+      // Match import ... from '@/...' or import ... from "@/..."
+      const importRegex = /from\s+['"]@\/([^'"]+)['"]/g;
+      let match;
+      while ((match = importRegex.exec(file.content)) !== null) {
+        const importPath = match[1];
+        // Resolve to possible file paths
+        const candidates = [
+          `src/${importPath}`,
+          `src/${importPath}.ts`,
+          `src/${importPath}.tsx`,
+          `src/${importPath}/index.ts`,
+          `src/${importPath}/index.tsx`,
+        ];
+        const exists = candidates.some(c => generatedPaths.has(c));
+        if (!exists) {
+          const resolved = `src/${importPath}`;
+          if (!missingImports.has(resolved)) {
+            missingImports.set(resolved, []);
+          }
+          missingImports.get(resolved)!.push(file.path);
+        }
+      }
+    }
+
+    // Generate stub files for missing imports to prevent "Module not found" crashes
+    if (missingImports.size > 0) {
+      const stubs: Omit<GeneratedFile, "id" | "project_id" | "created_at">[] = [];
+      for (const [missingPath] of missingImports) {
+        // Determine file extension
+        const ext = questionnaire.language === "typescript" ? "tsx" : "jsx";
+        let filePath = missingPath;
+        if (!filePath.match(/\.(ts|tsx|js|jsx)$/)) {
+          filePath = `${missingPath}.${ext}`;
+        }
+        // Generate a simple stub component or module
+        const componentName = missingPath.split("/").pop()?.replace(/\.(ts|tsx|js|jsx)$/, "") ?? "Component";
+        const isComponent = filePath.endsWith(".tsx") || filePath.endsWith(".jsx");
+        const stub = isComponent
+          ? `export default function ${componentName}() {\n  return <div>{/* ${componentName} */}</div>;\n}\n`
+          : `// ${componentName} stub\nexport {};\n`;
+        stubs.push(makeFile(filePath, stub));
+      }
+      emit(stubs);
+      console.warn(`Generated ${stubs.length} stub files for missing imports: ${[...missingImports.keys()].join(", ")}`);
+    }
 
     onEvent({ type: "complete", data: {} });
     return allFiles;

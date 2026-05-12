@@ -13,10 +13,10 @@ export default function PricingPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pack_id: packId }),
     });
-    if (res.status === 401) { window.location.href = "/auth/signup?redirect=/pricing"; return; }
+    if (res.status === 401) { window.location.assign("/auth/signup?redirect=/pricing"); return; }
     if (res.status === 503) { alert("Payments not yet configured. Contact support."); return; }
     const { url } = await res.json();
-    if (url) window.location.href = url;
+    if (url) window.location.assign(url);
   };
 
   return (
