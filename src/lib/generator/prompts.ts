@@ -73,12 +73,20 @@ ${stackSummary(q)}
 
 Requirements:
 - "name": "${name}"
-- Real, current version numbers for every dependency (no "latest", no "*")
+- Use EXACT pinned versions listed below — do not substitute newer versions. These are tested compatible.
 - devDependencies: typescript: ^5.0.0, eslint: ^9.0.0, prettier: ^3.0.0, @types/node: ^22.0.0, @types/react: ^19.0.0, @types/react-dom: ^19.0.0
 - scripts: { "dev": "next dev", "build": "next build", "start": "next start", "lint": "next lint", "type-check": "tsc --noEmit" }
 
-Required dependencies based on stack:
-${q.framework === "nextjs" ? `- next: ${q.cms === "payload" ? "15.4.11" : "^15.0.0"}, react: ^19.0.0, react-dom: ^19.0.0` : ""}
+${q.node_version === "18" ? `NODE 18 CONSTRAINT: Node 18 does not support some newer package APIs. Use these safe versions:
+- next: 14.2.18 (Next 15 requires Node 18.18+, pin to 14 for safety)
+- Do NOT use packages that require Node 20+` :
+q.node_version === "20" ? `NODE 20: Use current stable versions. Next.js 15 works fine on Node 20.` :
+`NODE 22: Use latest stable versions.`}
+
+${q.dev_os === "macos_catalina" ? `MACOS CATALINA CONSTRAINT: macOS 10.15 cannot run esbuild 0.20+ (missing _SecTrustCopyCertificateChain symbol). Pin in overrides: esbuild: "0.17.19", tsx: "3.14.0". Also avoid any package whose native binary requires macOS 12+.` : ""}
+
+Required dependencies (use these exact version ranges):
+${q.framework === "nextjs" ? `- next: ${q.node_version === "18" ? "14.2.18" : q.cms === "payload" ? "15.4.11" : "^15.0.0"}, react: ^19.0.0, react-dom: ^19.0.0` : ""}
 ${q.styling === "tailwind" ? "- tailwindcss: ^4.0.0, @tailwindcss/postcss: ^4.0.0" : ""}
 ${q.styling === "styled_components" ? "- styled-components: ^6.0.0" : ""}
 - clsx: ^2.1.0, tailwind-merge: ^2.5.0, lucide-react: ^0.460.0
@@ -108,7 +116,7 @@ ${q.features?.includes("analytics") ? "- @vercel/analytics: ^1.3.0" : ""}
 ${q.features?.includes("pwa") ? "- @ducanh2912/next-pwa: ^10.0.0" : ""}
 ${q.project_type === "game" ? "- phaser: ^3.86.0" : ""}
 
-Include an "overrides" field to force React 19 across all transitive deps that may still declare older peer versions${q.dev_os === "macos_catalina" ? `, and pin esbuild + tsx to versions that support macOS 10.15 Catalina (esbuild 0.20+ requires macOS 12)` : ""}:
+Include an "overrides" field to force React 19 across all transitive deps:
 {
   "overrides": {
     "react": "^19.0.0",
@@ -118,7 +126,7 @@ Include an "overrides" field to force React 19 across all transitive deps that m
   }
 }
 
-${q.node_version ? `Include an "engines" field: { "node": ">=${q.node_version}.0.0 <${String(Number(q.node_version) + 2)}.0.0" }` : ""}
+Include an "engines" field: { "node": ">=${q.node_version ?? "18"}.0.0" }
 
 Return ONLY the raw JSON content of package.json. No markdown, no explanation.`;
 }
