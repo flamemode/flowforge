@@ -78,13 +78,13 @@ ${q.extra_apis?.includes("pusher") ? "- pusher: ^5.2.0, pusher-js: ^8.4.0" : ""}
 ${q.extra_apis?.includes("algolia") ? "- algoliasearch: ^5.0.0" : ""}
 ${q.extra_apis?.includes("mapbox") ? "- mapbox-gl: ^3.7.0, @types/mapbox-gl: ^3.4.0" : ""}
 ${q.extra_apis?.includes("twilio") ? "- twilio: ^5.3.0" : ""}
-${q.cms === "payload" ? "- payload: ^3.0.0, @payloadcms/next: ^3.0.0, @payloadcms/richtext-lexical: ^3.0.0" : ""}
+${q.cms === "payload" ? `- payload: ^3.0.0, @payloadcms/next: ^3.0.0, @payloadcms/richtext-lexical: ^3.0.0${q.database === "mongodb" ? ", @payloadcms/db-mongodb: ^3.0.0" : ", @payloadcms/db-postgres: ^3.0.0"}` : ""}
 ${q.cms === "sanity" ? "- next-sanity: ^9.0.0, @sanity/image-url: ^1.0.3, sanity: ^3.60.0" : ""}
 ${q.cms === "contentful" ? "- contentful: ^11.0.0" : ""}
 ${q.animations === "rich" ? "- framer-motion: ^11.0.0" : ""}
 ${q.features?.includes("i18n") ? "- next-intl: ^3.20.0" : ""}
 ${q.features?.includes("analytics") ? "- @vercel/analytics: ^1.3.0" : ""}
-${q.features?.includes("pwa") ? "- next-pwa: ^5.6.0" : ""}
+${q.features?.includes("pwa") ? "- @ducanh2912/next-pwa: ^10.0.0" : ""}
 ${q.project_type === "game" ? "- phaser: ^3.86.0" : ""}
 
 Return ONLY the raw JSON content of package.json. No markdown, no explanation.`;
