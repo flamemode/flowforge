@@ -18,6 +18,7 @@ ABSOLUTE RULES — never break these:
 export function mobileSummary(q: ProjectQuestionnaire): string {
   return [
     `Project name: ${q.project_name}`,
+    q.tagline ? `Tagline: "${q.tagline}"` : null,
     `Platform: mobile`,
     `App type: ${q.mobile_app_type ?? "general"}`,
     `Framework: ${q.mobile_framework ?? "expo"}`,
@@ -28,6 +29,9 @@ export function mobileSummary(q: ProjectQuestionnaire): string {
     q.design_style ? `Design style: ${q.design_style}` : null,
     q.color_scheme ? `Color scheme: ${q.color_scheme}` : null,
     q.animations ? `Animations: ${q.animations}` : null,
+    q.industry ? `Industry: ${q.industry}` : null,
+    q.content_tone ? `Content tone: ${q.content_tone}` : null,
+    q.target_audience ? `Target audience: ${q.target_audience}` : null,
     `Description: ${q.description}`,
   ].filter(Boolean).join("\n");
 }
@@ -37,7 +41,6 @@ function jsonInstruction(): string {
 Return ONLY the JSON. No markdown, no explanation, no text outside the JSON.`;
 }
 
-const isExpo = (q: ProjectQuestionnaire) => q.mobile_framework === "expo" || !q.mobile_framework;
 const isFlutter = (q: ProjectQuestionnaire) => q.mobile_framework === "flutter";
 const isSwift = (q: ProjectQuestionnaire) => q.mobile_framework === "swift";
 const isKotlin = (q: ProjectQuestionnaire) => q.mobile_framework === "kotlin";
