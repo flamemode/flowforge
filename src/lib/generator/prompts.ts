@@ -11,7 +11,8 @@ ABSOLUTE RULES — never break these:
 5. When returning JSON: return ONLY the raw JSON object. Zero markdown fences, zero explanation, nothing before or after the {.
 6. Apply design_style and color_scheme to every UI file's CSS/classes.
 7. animations="none" → no transitions. "subtle" → CSS transitions only. "moderate" → CSS + Intersection Observer. "rich" → framer-motion.
-8. Implement every item listed in features[] in the relevant files.`;
+8. Implement every item listed in features[] in the relevant files.
+9. NEVER import from '@supabase/auth-helpers-nextjs' — it is deprecated and not installed. Use '@supabase/ssr' instead: createBrowserClient for client components, createServerClient for server components/route handlers.`;
 }
 
 function stackSummary(q: ProjectQuestionnaire): string {
@@ -672,6 +673,7 @@ Generate these files:
   - Logo/brand name "${q.project_name}" on the left
   - Navigation links relevant to a ${q.project_type} site
   ${q.auth !== "none" ? `- Auth state: if logged in show user avatar + dropdown (profile, settings, sign out); if logged out show Login + Sign Up buttons` : "- CTA button on right"}
+  ${q.auth === "supabase_auth" ? `- CRITICAL: Use createBrowserClient from '@supabase/ssr' to get session. NEVER import from '@supabase/auth-helpers-nextjs' — that package is deprecated and not installed.` : ""}
   ${q.features?.includes("dark_mode") || q.color_scheme === "system_toggle" ? "- Dark/light mode toggle button" : ""}
   - Mobile hamburger menu that opens a drawer/sheet
   - Sticky on scroll
