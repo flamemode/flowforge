@@ -51,8 +51,17 @@ export default function ProjectPage() {
 
   useEffect(() => {
     fetch(`/api/projects/${id}`)
-      .then((r) => r.json())
-      .then(({ project, files: f }) => {
+      .then(async (r) => {
+        if (!r.ok) {
+          const { error } = await r.json().catch(() => ({ error: "Failed to load project" }));
+          setError(error ?? "Failed to load project");
+          return;
+        }
+        return r.json();
+      })
+      .then((data) => {
+        if (!data) return;
+        const { project, files: f } = data;
         setProject(project);
         if (f?.length > 0) {
           setFiles(f);
@@ -65,7 +74,8 @@ export default function ProjectPage() {
           (project?.status === "complete" && (!f || f.length === 0));
 
         if (needsGeneration) startGeneration();
-      });
+      })
+      .catch(() => setError("Network error. Please refresh the page."));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
