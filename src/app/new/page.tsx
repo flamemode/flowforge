@@ -17,6 +17,7 @@ import {
   COLOR_SCHEME_OPTIONS,
   ANIMATION_OPTIONS,
   FEATURE_OPTIONS,
+  FONT_PAIRING_OPTIONS,
   MOBILE_APP_TYPE_OPTIONS,
   MOBILE_FRAMEWORK_OPTIONS,
   MOBILE_BACKEND_OPTIONS,
@@ -484,6 +485,28 @@ export default function NewProjectPage() {
                   ))}
                 </div>
               </div>
+              <div>
+                <p className="text-sm font-medium text-zinc-400 mb-3">Typography</p>
+                <div className="space-y-2">
+                  {FONT_PAIRING_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => set("font_pairing", opt.value as ProjectQuestionnaire["font_pairing"])}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
+                        q.font_pairing === opt.value
+                          ? "border-violet-500 bg-violet-500/10"
+                          : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                      }`}
+                    >
+                      <div>
+                        <div className="font-medium text-white text-sm">{opt.label}</div>
+                        <div className="text-xs text-zinc-400 mt-0.5">{opt.description}</div>
+                      </div>
+                      <span className="text-2xl text-zinc-300 font-serif ml-4">{opt.preview}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -703,6 +726,28 @@ export default function NewProjectPage() {
                     >
                       <div className="font-medium text-white">{opt.label}</div>
                       <div className="text-xs text-zinc-400 mt-1">{opt.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-zinc-400 mb-3">Typography</p>
+                <div className="space-y-2">
+                  {FONT_PAIRING_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => set("font_pairing", opt.value as ProjectQuestionnaire["font_pairing"])}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
+                        q.font_pairing === opt.value
+                          ? "border-violet-500 bg-violet-500/10"
+                          : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                      }`}
+                    >
+                      <div>
+                        <div className="font-medium text-white text-sm">{opt.label}</div>
+                        <div className="text-xs text-zinc-400 mt-0.5">{opt.description}</div>
+                      </div>
+                      <span className="text-2xl text-zinc-300 font-serif ml-4">{opt.preview}</span>
                     </button>
                   ))}
                 </div>

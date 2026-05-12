@@ -29,6 +29,7 @@ function stackSummary(q: ProjectQuestionnaire): string {
     q.design_style ? `Design style: ${q.design_style}` : null,
     q.color_scheme ? `Color scheme: ${q.color_scheme}` : null,
     q.animations ? `Animations: ${q.animations}` : null,
+    q.font_pairing ? `Typography: ${q.font_pairing}` : null,
     q.features && q.features.length > 0 ? `Features: ${q.features.join(", ")}` : null,
     `Description: ${q.description}`,
   ].filter(Boolean).join("\n");
@@ -291,9 +292,18 @@ export function getRootFilesPrompt(q: ProjectQuestionnaire): string {
 
   if (q.framework === "nextjs") {
     files.push(`"src/app/layout.${t}":
-  - Root layout component. Import Inter from next/font/google.
+  - Root layout component.
+  - Font setup from next/font/google: ${
+      q.font_pairing === "geist" ? "Import { GeistSans } from 'geist/font/sans'" :
+      q.font_pairing === "playfair" ? "Import Playfair_Display and Lato, apply both as CSS variables" :
+      q.font_pairing === "sora" ? "Import Sora" :
+      q.font_pairing === "space_grotesk" ? "Import Space_Grotesk" :
+      q.font_pairing === "cal_sans" ? "Import Cal_Sans (if unavailable use Plus_Jakarta_Sans) + Inter" :
+      q.font_pairing === "mono" ? "Import JetBrains_Mono" :
+      "Import Inter"
+    }
   - Set metadata: title "${q.project_name}", description from the project description.
-  - HTML structure: <html lang="en"><body className={inter.className}>{children}</body></html>
+  - HTML structure: <html lang="en"><body className={font.className}>{children}</body></html>
   ${q.styling === "tailwind" ? "- Import './globals.css'" : ""}
   ${q.auth === "clerk" ? "- Wrap children with <ClerkProvider>" : ""}
   ${q.features?.includes("analytics") ? "- Include <Analytics /> from @vercel/analytics/react" : ""}
@@ -307,8 +317,16 @@ export function getRootFilesPrompt(q: ProjectQuestionnaire): string {
     files.push(`"src/app/page.${t}":
   - Homepage for a ${q.project_type} application
   - Content specifically about: ${q.description}
-  - Include: hero section with headline + CTA button, features/benefits section (3-6 items), second CTA section
-  - Fully styled with ${q.styling} using ${q.design_style} design and ${q.color_scheme} color scheme
+  ${q.project_type === "ecommerce" || q.project_type === "marketplace" ? `- Full storefront homepage. Must include ALL of these sections in order:
+    1. HERO: Full-width banner with background image/gradient, large headline, subheadline, two CTA buttons (Shop Now + View Deals). Badge showing e.g. "Free shipping over $50".
+    2. CATEGORY GRID: 4-6 category cards with icon/image, category name, item count. Grid layout, hover lift effect.
+    3. FEATURED PRODUCTS: Section heading + horizontal scroll or 4-column grid of ProductCard components. Each card: product image placeholder (bg-gradient), name, price, star rating (4-5 stars), "Add to Cart" button.
+    4. BANNER/PROMO: Full-width promotional strip with bold color, discount offer text, CTA button.
+    5. BENEFITS ROW: 4 icons in a row — Free Shipping, Easy Returns, Secure Payment, 24/7 Support. Each with icon, title, description.
+    6. NEWSLETTER: Email signup section with headline and input+button.
+    7. FOOTER imported from layout.
+  - Use real product names and copy relevant to: ${q.description}` : `- Include: hero section with headline + CTA button, features/benefits section (3-6 items), second CTA section`}
+  - Fully styled with ${q.styling} using ${q.design_style} design and ${q.color_scheme} color scheme — MUST look polished and production-ready, not like a template
   - Real copy relevant to the project — not placeholder Lorem ipsum`);
 
     if (q.auth !== "none") {
@@ -457,9 +475,9 @@ export function getFeaturePagesPrompt(q: ProjectQuestionnaire): string {
     }
   } else if (q.project_type === "ecommerce" || q.project_type === "marketplace") {
     files.push(
-      `"src/app/products/page.${t}" — Products listing page. Fetches products from DB. Renders <ProductGrid>. Includes filter sidebar (category, price range).`,
-      `"src/app/products/[slug]/page.${t}" — Product detail page. Shows image gallery, name, price, description, add-to-cart button.`,
-      `"src/app/cart/page.${t}" — Shopping cart. Lists <CartItem> for each item. Shows <CartSummary>. Checkout button hits payment API.`,
+      `"src/app/products/page.${t}" — Products listing page. Layout: left filter sidebar (sticky, 260px) + right product grid. Sidebar: category checkboxes, price range slider, rating filter, "Clear filters" button. Top bar: result count + sort dropdown (Featured, Price low-high, Price high-low, Newest). Grid: responsive 2-4 columns of ProductCard. Skeleton loading state. Empty state with illustration. Breadcrumb at top.`,
+      `"src/app/products/[slug]/page.${t}" — Product detail page. Layout: left column image gallery (main image + 4 thumbnail row), right column product info. Info column: breadcrumb, name (h1), star rating + review count, price (large, bold) with original crossed-out if on sale, color/size variant selector (button group), quantity stepper, "Add to Cart" (full width, primary) + "Save to Wishlist" buttons, shipping badge ("Free delivery"), accordion for Description / Specifications / Reviews.`,
+      `"src/app/cart/page.${t}" — Shopping cart page. Two-column layout: left = cart items list (CartItem components), right = sticky OrderSummary sidebar. CartItem: product thumbnail, name, variant, unit price, quantity +/- stepper, remove button. OrderSummary: subtotal, shipping (free over threshold), taxes, bold total, Checkout button, PayPal/Apple Pay logos, security badges (SSL lock icon). Empty cart state with illustration and "Continue Shopping" link.`,
     );
   } else if (q.project_type === "blog") {
     files.push(
@@ -622,48 +640,53 @@ export function getFeatureComponentsPrompt(q: ProjectQuestionnaire): string {
 
   if (q.project_type === "ecommerce" || q.project_type === "marketplace") {
     files.push(
-      `"src/components/products/ProductCard.${t}" — Product card. Props: id, name, price, image, slug, rating. Image with aspect-ratio container, name, price, star rating, "Add to Cart" button. Hover effects.`,
-      `"src/components/products/ProductGrid.${t}" — Responsive grid of ProductCards. Props: products array. CSS grid with responsive columns.`,
-      `"src/components/cart/CartItem.${t}" — Cart line item. Props: id, name, price, quantity, image, onRemove, onQuantityChange. Quantity +/- controls, remove button.`,
-      `"src/components/cart/CartSummary.${t}" — Order summary sidebar. Props: items[], onCheckout. Shows subtotal, tax, total. Checkout button.`,
+      `"src/components/products/ProductCard.${t}" — Polished product card. Props: id, name, price, originalPrice?, image, slug, rating, reviewCount, badge? (e.g. "Sale", "New", "Low Stock"). Layout: square image container (aspect-ratio: 1/1) with next/image, badge chip top-left, wishlist heart button top-right (hover reveal). Below image: category label (small muted text), product name (font-medium, 2 lines truncate), star rating row (filled stars + count), price row (current price bold + originalPrice crossed out in muted color if sale). "Add to Cart" button appears on hover with slide-up animation. Full card is a link to /products/[slug].`,
+      `"src/components/products/ProductGrid.${t}" — Responsive product grid. Props: products[], loading?, columns? (default 4). Uses CSS grid: 1 col mobile, 2 col sm, 3 col md, 4 col lg. Loading state renders 8 skeleton cards (pulsing gray placeholders). Empty state shows search icon + "No products found" + clear filters link.`,
+      `"src/components/cart/CartItem.${t}" — Cart line item row. Props: id, name, price, quantity, image, variant?, slug, onRemove, onQuantityChange. Layout: product thumbnail (64x64, rounded, next/image), product info column (name linked to product, variant in muted text, unit price), quantity stepper (minus button, number input, plus button — min 1), line total (price × qty, bold), trash icon remove button. Hover highlights row.`,
+      `"src/components/cart/CartSummary.${t}" — Sticky order summary card. Props: items[], shippingThreshold (default 50), onCheckout, loading?. Shows: "Order Summary" heading, itemised list of name+qty+price, divider, subtotal row, shipping row (free if above threshold, else calculated), tax row (estimated), bold total row, primary "Proceed to Checkout" button (full width, shows spinner when loading), divider, PayPal alternative button (outlined), trust badges row (lock icon "Secure checkout", shield "Buyer protection").`,
     );
   } else if (q.project_type === "photography") {
     files.push(
-      `"src/components/gallery/GalleryGrid.${t}" — CSS masonry/grid photo gallery. Props: photos[] with src, alt, width, height. Uses next/image. Click handler.`,
-      `"src/components/gallery/PhotoCard.${t}" — Single photo card with Next.js Image, hover overlay showing title.`,
-      `"src/components/gallery/Lightbox.${t}" — Full-screen lightbox. Props: photos[], currentIndex, isOpen, onClose, onPrev, onNext. Keyboard navigation (arrow keys, escape).`,
+      `"src/components/gallery/GalleryGrid.${t}" — CSS masonry photo gallery. Props: photos[] with { src, alt, width, height, title? }, onPhotoClick. Uses CSS columns (2 col mobile, 3 col md, 4 col lg) for masonry effect. Each photo uses next/image with hover overlay (darkens + shows title + expand icon). Subtle gap between photos.`,
+      `"src/components/gallery/PhotoCard.${t}" — Single photo card. Props: src, alt, title?, albumName?, onClick. next/image with fill layout inside aspect-ratio container. Hover: overlay fades in with title + icon. Cursor pointer. Transition duration 300ms.`,
+      `"src/components/gallery/Lightbox.${t}" — Full-screen photo lightbox. Props: photos[], currentIndex, isOpen, onClose, onPrev, onNext. Fixed overlay (backdrop blur + dark bg). Center: large photo with next/image. Left/right arrow buttons. Keyboard: ← → navigate, Escape close. Photo counter "3 / 24". Close button top-right. Swipe gesture support via touch events.`,
     );
   } else if (q.project_type === "saas" || q.project_type === "dashboard") {
     files.push(
-      `"src/components/dashboard/Sidebar.${t}" — Collapsible sidebar. Props: items[] with label, href, icon. Highlights active route using usePathname. Collapse button. Icon-only mode when collapsed.`,
-      `"src/components/dashboard/StatsCard.${t}" — KPI metric card. Props: title, value, change (percent), trend (up|down|neutral), icon. Color-coded trend indicator.`,
-      `"src/components/dashboard/DataTable.${t}" — Generic sortable table. Props: columns[] with key+label+sortable, data[], onRowClick. Click column header to sort. Shows empty state.`,
+      `"src/components/dashboard/Sidebar.${t}" — Collapsible sidebar nav. Props: items[] with { label, href, icon (lucide name), badge? }. Width 240px expanded / 64px collapsed. Collapse toggle button at bottom. Active route highlighted (primary bg, white text) using usePathname. Each item: icon + label in expanded, icon only with tooltip in collapsed. Section dividers with muted labels. User profile row at bottom (avatar, name, email, settings icon).`,
+      `"src/components/dashboard/StatsCard.${t}" — KPI metric card. Props: title, value (string), change (number, percent), trend ('up'|'down'|'neutral'), icon (lucide name), color? ('blue'|'green'|'orange'|'purple'). Layout: icon in colored rounded square (top-left), value (large bold), title (muted small), trend chip (arrow + percent, green if up, red if down). Subtle hover shadow.`,
+      `"src/components/dashboard/DataTable.${t}" — Sortable data table. Props: columns[] with { key, label, sortable?, render? }, data[], onRowClick?, loading?, emptyMessage?. Column header click toggles sort asc/desc (shows arrow icon). Striped rows. Loading state: skeleton rows. Empty state: icon + message. Pagination controls (prev/next + page info). Sticky header.`,
+      `"src/components/dashboard/ChartCard.${t}" — Chart container card. Props: title, subtitle?, children (chart content), actions? (JSX buttons top-right). Wraps any chart library output in a styled card with header.`,
     );
   } else if (q.project_type === "blog") {
     files.push(
-      `"src/components/blog/PostCard.${t}" — Blog post preview. Props: title, slug, excerpt, publishedAt, author (name+avatar), coverImage, category. Links to /blog/[slug].`,
-      `"src/components/blog/PostHeader.${t}" — Post page header. Props: title, publishedAt, author, coverImage, readingTime, category. Large cover image, metadata row.`,
+      `"src/components/blog/PostCard.${t}" — Blog post preview card. Props: title, slug, excerpt (max 160 chars), publishedAt, readingTime, author ({ name, avatarUrl }), coverImage, category, featured?. Layout: cover image top (16/9 aspect, next/image), category badge (colored pill), title (hover underline), excerpt (2 lines), author row (avatar + name + date + reading time). Featured variant is larger with horizontal layout.`,
+      `"src/components/blog/PostHeader.${t}" — Article page header. Props: title, publishedAt, updatedAt?, author ({ name, bio, avatarUrl, twitter? }), coverImage, readingTime, category, tags[]. Full-width cover image with overlay gradient. Below: category badge, h1 title (large), tag row, author card (avatar, name, bio excerpt, social links), meta row (date, reading time, share buttons).`,
+      `"src/components/blog/TableOfContents.${t}" — Sticky floating ToC. Props: headings[] with { id, text, level }. Fixed sidebar (desktop) or collapsible (mobile). Highlights active section as user scrolls using IntersectionObserver.`,
     );
   } else if (q.project_type === "portfolio") {
     files.push(
-      `"src/components/portfolio/ProjectCard.${t}" — Portfolio project card. Props: title, description, image, tags[], liveUrl, githubUrl. Image hover zoom, tag badges, links.`,
-      `"src/components/portfolio/SkillBadge.${t}" — Technology skill badge. Props: name, icon?, level (beginner|intermediate|expert)?. Pill shape with color by level.`,
+      `"src/components/portfolio/ProjectCard.${t}" — Portfolio project card. Props: title, description, image, tags[], liveUrl?, githubUrl?, featured?. Image container with hover zoom (scale-105 transition). Gradient overlay on image. Below: title, description (3 lines truncate), tech tag badges. Footer: GitHub icon link + external link icon — both open in new tab. Featured variant: full-width horizontal layout with larger image.`,
+      `"src/components/portfolio/SkillBadge.${t}" — Technology skill badge. Props: name, icon? (svg or emoji), level? ('beginner'|'intermediate'|'expert'), color?. Pill with icon + name. Optional proficiency bar below (thin colored bar). Groups well in a flex-wrap grid.`,
+      `"src/components/portfolio/TimelineItem.${t}" — Experience/education timeline entry. Props: title, company, period, description, tags[], logo?. Left: vertical line + dot. Right: date range (muted), job title (bold), company + logo, description, tech tags.`,
     );
   } else if (q.project_type === "social" || q.project_type === "forum") {
     files.push(
-      `"src/components/feed/PostCard.${t}" — Social post or forum thread card. Props: author (name+avatar), content, createdAt, likes, replies, tags[]. Like button, reply count.`,
-      `"src/components/feed/CommentThread.${t}" — Nested comment list. Props: comments[] with id, author, content, createdAt, children[]. Recursive rendering.`,
+      `"src/components/feed/PostCard.${t}" — Social post / forum thread card. Props: author (name, username, avatarUrl), content (text, up to 500 chars), createdAt, likes, replies, reposts, tags[], mediaUrls?[]. Layout: avatar left, content right. Header: display name (bold) + @username + timestamp (relative e.g. "2h ago"). Content body with hashtag highlighting. Media grid (1-4 images in responsive grid). Action row: Like (heart, toggles red), Reply (speech bubble), Repost, Share — each with count. Full card is clickable to thread detail.`,
+      `"src/components/feed/CommentThread.${t}" — Threaded comment list. Props: comments[] with id, author (name+avatarUrl), content, createdAt, likes, children[]. Renders recursively up to 3 levels deep with left indent line. Each comment: avatar, author name+timestamp, content, like+reply actions. "Load more replies" expander for 3+ children.`,
     );
   } else if (q.project_type === "booking") {
     files.push(
-      `"src/components/booking/DatePicker.${t}" — Calendar date picker component. Props: value, onChange, minDate, maxDate, disabledDates[]. Shows month grid, navigate months.`,
-      `"src/components/booking/TimeSlots.${t}" — Time slot selector. Props: slots[] with time+available, selectedSlot, onSelect. Grid of clickable time buttons.`,
+      `"src/components/booking/DatePicker.${t}" — Full calendar date picker. Props: value, onChange, minDate, maxDate, disabledDates[]. Shows current month grid (7-column weekday header + day cells). Prev/next month navigation. Days before minDate are dimmed. disabledDates shown with strikethrough. Selected day highlighted with primary color circle. Today marker with dot.`,
+      `"src/components/booking/TimeSlots.${t}" — Time slot selector grid. Props: slots[] with { time, available, price? }, selectedSlot, onSelect. Renders as responsive button grid (3-4 columns). Available slots: outlined button, hover fill. Unavailable: gray + "Full" label + disabled. Selected: filled primary. Shows slot count summary ("8 of 12 slots available").`,
+      `"src/components/booking/BookingCard.${t}" — Service/provider card. Props: name, description, duration (mins), price, image, rating, reviewCount, tags[]. Image top, content bottom. Tags as small badges. Duration + price in a row. "Book Now" button.`,
     );
   } else if (q.project_type === "landing") {
     files.push(
-      `"src/components/landing/HeroSection.${t}" — Hero with headline, subheadline, CTA buttons, hero image/illustration placeholder.`,
-      `"src/components/landing/FeaturesGrid.${t}" — Features grid. Props: features[] with icon, title, description. 3-column responsive grid.`,
-      `"src/components/landing/TestimonialsSection.${t}" — Customer testimonials. Props: testimonials[] with quote, author, title, avatar. Carousel or grid layout.`,
+      `"src/components/landing/HeroSection.${t}" — Full-width hero. Props: headline, subheadline, ctaPrimary ({label, href}), ctaSecondary? ({label, href}), badge? (small label above headline), stats? ([{value, label}]). Layout: centered or split (text left, image/graphic right). Gradient or image background. Headline uses large responsive type (text-4xl → text-7xl). Social proof: "Trusted by X+ companies" with logo strip or avatar stack + star rating. Stats row below CTAs.`,
+      `"src/components/landing/FeaturesGrid.${t}" — Features section. Props: title, subtitle, features[] with { icon (lucide name), title, description, color? }. 3-column grid (1 col mobile). Each feature: icon in colored rounded square, bold title, muted description. Optional: alternating left/right layout for main features.`,
+      `"src/components/landing/TestimonialsSection.${t}" — Testimonials. Props: testimonials[] with { quote, author, role, company, avatarUrl, rating }. Card grid (3 cols) or carousel with prev/next arrows. Each card: star rating, quote in italic, avatar + name + role. Background: subtle pattern or solid section color to stand out from page.`,
+      `"src/components/landing/PricingCards.${t}" — Pricing section. Props: plans[] with { name, price, period, description, features[], cta, highlighted? }. 3-column card layout. Highlighted plan has primary color border, "Most popular" badge, slightly larger scale. Features list with check icons. Annual/monthly toggle at top.`,
     );
   }
 

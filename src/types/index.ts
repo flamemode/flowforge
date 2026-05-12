@@ -3,6 +3,7 @@ export type SubscriptionTier = "free" | "pro" | "team" | "agency";
 export type Platform = "web" | "mobile";
 export type DevOS = "macos_modern" | "macos_catalina" | "windows" | "linux";
 export type NodeVersion = "18" | "20" | "22";
+export type FontPairing = "inter" | "geist" | "cal_sans" | "playfair" | "sora" | "space_grotesk" | "mono";
 export type MobileAppType = "social" | "ecommerce" | "fitness" | "finance" | "food_delivery" | "productivity" | "education" | "news" | "travel" | "game";
 export type MobileFramework = "expo" | "flutter" | "swift" | "kotlin";
 export type MobileBackend = "supabase" | "firebase" | "rest_api" | "none";
@@ -135,6 +136,8 @@ export interface ProjectQuestionnaire {
   mobile_framework?: MobileFramework;
   mobile_backend?: MobileBackend;
   mobile_features?: MobileFeature[];
+  // Typography
+  font_pairing?: FontPairing;
   // Dev environment
   dev_os?: DevOS;
   node_version?: NodeVersion;

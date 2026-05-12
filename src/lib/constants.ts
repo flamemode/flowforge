@@ -196,6 +196,18 @@ export const MOBILE_FEATURE_OPTIONS = [
   { value: "deep_linking", label: "Deep Linking", description: "Open app from URLs" },
 ] as const;
 
+// ─── Typography ──────────────────────────────────────────────────────────────
+
+export const FONT_PAIRING_OPTIONS = [
+  { value: "inter", label: "Inter", description: "Clean, modern sans-serif — default for most apps", preview: "Aa" },
+  { value: "geist", label: "Geist", description: "Vercel's typeface — crisp and technical", preview: "Aa" },
+  { value: "cal_sans", label: "Cal Sans + Inter", description: "Bold display headings + clean body — great for SaaS", preview: "Aa" },
+  { value: "playfair", label: "Playfair Display + Lato", description: "Elegant serif headings — blogs, portfolios, luxury", preview: "Aa" },
+  { value: "sora", label: "Sora", description: "Geometric and friendly — good for startups", preview: "Aa" },
+  { value: "space_grotesk", label: "Space Grotesk", description: "Quirky geometric — landing pages, creative projects", preview: "Aa" },
+  { value: "mono", label: "JetBrains Mono", description: "Monospace — developer tools, API docs, terminals", preview: "Aa" },
+] as const;
+
 // ─── Dev environment ─────────────────────────────────────────────────────────
 
 export const DEV_OS_OPTIONS = [
