@@ -111,7 +111,7 @@ export function getConfigFilesPrompt(q: ProjectQuestionnaire): string {
 ${stackSummary(q)}
 
 Generate ALL of these files exactly as named:
-${q.framework === "nextjs" ? `- "next.config.ts" — Next.js 15 config. If Payload CMS, import withPayload. Otherwise minimal config with images remotePatterns if cloudinary/supabase used.
+${q.framework === "nextjs" ? `- "next.config.ts" — Next.js 15 config.${q.cms === "payload" ? ` Must use: import { withPayload } from '@payloadcms/next/withPayload'; export default withPayload(nextConfig); — the export is named "withPayload" (NOT withPayloadCMS, NOT default export).` : " Minimal config with images remotePatterns if cloudinary/supabase used."}
 - "tsconfig.json" — TypeScript config. compilerOptions: target ES2017, lib [dom, dom.iterable, esnext], jsx preserve, strict true, moduleResolution bundler, paths {"@/*": ["./src/*"]}.
 - "postcss.config.mjs" — PostCSS config${q.styling === "tailwind" ? ` with @tailwindcss/postcss plugin` : ""}.
 ${q.styling === "tailwind" ? `- "src/app/globals.css" — Tailwind v4: @import "tailwindcss"; then CSS custom properties for theme colors, fonts, spacing based on the ${q.design_style} design style and ${q.color_scheme} color scheme.` : ""}` : ""}
@@ -812,7 +812,7 @@ export function getCMSFilesPrompt(q: ProjectQuestionnaire): string {
 ${stackSummary(q)}
 
 Generate ALL of these files exactly:
-- "payload.config.ts" — Main config. Import buildConfig from payload. Collections: [Users, Media${q.project_type === "blog" ? ", Posts" : q.project_type === "ecommerce" ? ", Products" : ""}]. DB: ${q.database === "mongodb" ? "mongooseAdapter" : "postgresAdapter"} from appropriate @payloadcms package. secret from env("PAYLOAD_SECRET"). editor: lexicalEditor({}). serverURL from env.
+- "payload.config.ts" — Main config. Exact imports: import { buildConfig } from 'payload'; import { lexicalEditor } from '@payloadcms/richtext-lexical'; import { ${q.database === "mongodb" ? "mongooseAdapter } from '@payloadcms/db-mongodb'" : "postgresAdapter } from '@payloadcms/db-postgres'"}. Collections: [Users, Media${q.project_type === "blog" ? ", Posts" : q.project_type === "ecommerce" ? ", Products" : ""}]. secret: process.env.PAYLOAD_SECRET. editor: lexicalEditor({}). serverURL: process.env.NEXT_PUBLIC_SERVER_URL.
 - "src/payload/collections/Users.ts" — Users collection. auth: true. fields: name, role (admin|user enum).
 - "src/payload/collections/Media.ts" — Media collection. upload: { staticDir: "public/media", mimeTypes: ["image/*", "video/*"] }.
 ${q.project_type === "blog" ? `- "src/payload/collections/Posts.ts" — Posts collection. fields: title, slug (unique), content (richText with lexical), author (relationship to Users), status (draft|published), publishedAt, featuredImage (relationship to Media), categories.` : ""}
