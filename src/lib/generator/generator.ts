@@ -54,14 +54,27 @@ async function callClaude(
   opts: { model?: string; maxTokens?: number } = {}
 ): Promise<string> {
   const client = getAnthropicClient();
-  const message = await client.messages.create({
-    model: opts.model ?? SONNET,
-    max_tokens: opts.maxTokens ?? 8000,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userPrompt }],
-  });
-  const block = message.content[0];
-  return block.type === "text" ? block.text : "";
+  const maxAttempts = 4;
+  const delays = [2000, 5000, 10000]; // ms between retries
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const message = await client.messages.create({
+        model: opts.model ?? SONNET,
+        max_tokens: opts.maxTokens ?? 8000,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+      });
+      const block = message.content[0];
+      return block.type === "text" ? block.text : "";
+    } catch (err: unknown) {
+      const status = (err as { status?: number })?.status;
+      const isRetryable = status === 529 || status === 503 || status === 429 || status === 500;
+      if (!isRetryable || attempt === maxAttempts - 1) throw err;
+      await new Promise(res => setTimeout(res, delays[attempt]));
+    }
+  }
+  throw new Error("callClaude: unreachable");
 }
 
 function parseJsonResponse(raw: string): Record<string, string> {
