@@ -705,7 +705,7 @@ Generate these files:
   - Navigation links relevant to a ${q.project_type} site
   ${q.auth !== "none" ? `- Auth state: if logged in show user avatar + dropdown (profile, settings, sign out); if logged out show Login + Sign Up buttons` : "- CTA button on right"}
   ${q.auth === "supabase_auth" ? `- CRITICAL: Use createBrowserClient from '@supabase/ssr' to get session. NEVER import from '@supabase/auth-helpers-nextjs' — that package is deprecated and not installed.` : ""}
-  ${q.features?.includes("dark_mode") || q.color_scheme === "system_toggle" ? "- Dark/light mode toggle button" : ""}
+  ${q.color_scheme === "system_toggle" ? `- Import ThemeToggle from '@/components/ui/ThemeToggle' and render it in the navbar` : `- CRITICAL: do NOT import or use ThemeToggle — this project does not have a dark/light toggle`}
   - Mobile hamburger menu that opens a drawer/sheet
   - Sticky on scroll
 
