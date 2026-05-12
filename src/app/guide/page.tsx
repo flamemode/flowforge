@@ -165,7 +165,7 @@ export default function GuidePage() {
                 The easiest way: inside VS Code, go to the top menu → <strong className="text-white">Terminal</strong> → <strong className="text-white">New Terminal</strong>. A panel will open at the bottom of the screen.
               </p>
               <p className="text-zinc-500 text-xs">
-                Alternatively: on Mac, use Spotlight (⌘ Space) and search "Terminal". On Windows, search for "Command Prompt" or "PowerShell" in the Start menu.
+                Alternatively: on Mac, use Spotlight (⌘ Space) and search &ldquo;Terminal&rdquo;. On Windows, search for &ldquo;Command Prompt&rdquo; or &ldquo;PowerShell&rdquo; in the Start menu.
               </p>
             </Step>
           </div>

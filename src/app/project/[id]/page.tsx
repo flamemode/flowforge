@@ -49,44 +49,12 @@ export default function ProjectPage() {
   const [downloading, setDownloading] = useState(false);
   const streamRef = useRef(false);
 
-  useEffect(() => {
-    fetch(`/api/projects/${id}`)
-      .then(async (r) => {
-        if (!r.ok) {
-          const { error } = await r.json().catch(() => ({ error: "Failed to load project" }));
-          setError(error ?? "Failed to load project");
-          return;
-        }
-        return r.json();
-      })
-      .then((data) => {
-        if (!data) return;
-        const { project, files: f } = data;
-        setProject(project);
-        if (f?.length > 0) {
-          setFiles(f);
-          selectFile(f[0]);
-        }
-        const needsGeneration =
-          project?.status === "pending" ||
-          project?.status === "generating" ||
-          project?.status === "failed" ||
-          (project?.status === "complete" && (!f || f.length === 0));
-
-        if (needsGeneration) startGeneration();
-      })
-      .catch(() => setError("Network error. Please refresh the page."));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
   const selectFile = async (file: GeneratedFile) => {
     setSelectedPath(file.path);
-    // If content is already loaded, use it
     if (file.content) {
       setSelectedFile(file);
       return;
     }
-    // Fetch content from API
     if (!file.id) return;
     setLoadingFile(true);
     try {
@@ -94,22 +62,11 @@ export default function ProjectPage() {
       if (res.ok) {
         const { file: fullFile } = await res.json();
         setSelectedFile(fullFile);
-        // Cache the content in the files list
         setFiles((prev) => prev.map((f) => f.id === file.id ? { ...f, content: fullFile.content } : f));
       }
     } finally {
       setLoadingFile(false);
     }
-  };
-
-  const retryGeneration = () => {
-    streamRef.current = false;
-    setFiles([]);
-    setSelectedPath(null);
-    setCompletedSteps([]);
-    setCurrentLabel("");
-    setProject((p) => p ? { ...p, status: "generating" } : p);
-    startGeneration();
   };
 
   const startGeneration = async () => {
@@ -185,6 +142,46 @@ export default function ProjectPage() {
       setIsGenerating(false);
     }
   };
+
+  const retryGeneration = () => {
+    streamRef.current = false;
+    setFiles([]);
+    setSelectedPath(null);
+    setCompletedSteps([]);
+    setCurrentLabel("");
+    setProject((p) => p ? { ...p, status: "generating" } : p);
+    startGeneration();
+  };
+
+  useEffect(() => {
+    fetch(`/api/projects/${id}`)
+      .then(async (r) => {
+        if (!r.ok) {
+          const { error } = await r.json().catch(() => ({ error: "Failed to load project" }));
+          setError(error ?? "Failed to load project");
+          return;
+        }
+        return r.json();
+      })
+      .then((data) => {
+        if (!data) return;
+        const { project, files: f } = data;
+        setProject(project);
+        if (f?.length > 0) {
+          setFiles(f);
+          selectFile(f[0]);
+        }
+        const needsGeneration =
+          project?.status === "pending" ||
+          project?.status === "generating" ||
+          project?.status === "failed" ||
+          (project?.status === "complete" && (!f || f.length === 0));
+
+        if (needsGeneration) startGeneration();
+      })
+      .catch(() => setError("Network error. Please refresh the page."));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const handleDownload = async () => {
     setDownloading(true);

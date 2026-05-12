@@ -131,29 +131,45 @@ Include an "engines" field: { "node": ">=${q.node_version ?? "18"}.0.0" }
 Return ONLY the raw JSON content of package.json. No markdown, no explanation.`;
 }
 
-// ─── Step 2: Config files ─────────────────────────────────────────────────────
+// ─── Step 2: Config files (non-critical ones — tsconfig, postcss, next.config, .gitignore, .prettierrc are deterministic) ─
 
 export function getConfigFilesPrompt(q: ProjectQuestionnaire): string {
-  const t = tsx(q);
+  const configFiles: string[] = [];
+
+  // Only generate files NOT already handled deterministically
+  if (q.framework === "nextjs") {
+    configFiles.push(`- ".eslintrc.json" — ESLint for ${q.language} with next/core-web-vitals`);
+  }
+  if (q.framework === "astro") {
+    configFiles.push(
+      `- "astro.config.mjs" — Astro config`,
+      `- "tsconfig.json" — TypeScript config for Astro`
+    );
+  }
+  if (q.framework === "remix") {
+    configFiles.push(
+      `- "remix.config.js" — Remix config`,
+      `- "tsconfig.json" — TypeScript config for Remix`
+    );
+  }
+  if (q.framework === "vue") {
+    configFiles.push(
+      `- "nuxt.config.ts" — Nuxt 3 config`,
+      `- "tsconfig.json" — TypeScript config`
+    );
+  }
+  if (q.features?.includes("pwa")) {
+    configFiles.push(`- "public/manifest.json" — PWA manifest with name, short_name "${q.project_name}", icons array, theme_color, background_color, display standalone`);
+  }
+
+  if (configFiles.length === 0) return "";
+
   return `Generate configuration files for this project.
 
 ${stackSummary(q)}
 
-Generate ALL of these files exactly as named:
-${q.framework === "nextjs" ? `- "next.config.ts" — Next.js 15 config.${q.cms === "payload" ? ` Must use: import { withPayload } from '@payloadcms/next/withPayload'; export default withPayload(nextConfig);` : ""} Valid top-level keys ONLY: images, reactStrictMode, experimental, env, redirects, rewrites, headers${q.cms === "payload" ? ", withPayload wrapper" : ""}. NEVER add typescript, eslint, or compiler keys — those belong in tsconfig.json not here. For experimental: NEVER use dynamicIO, ppr, or any canary-only flags — only use stable experimental options like serverActions. Keep it minimal.
-- "tsconfig.json" — TypeScript config. compilerOptions: target ES2017, lib [dom, dom.iterable, esnext], jsx preserve, strict true, moduleResolution bundler, paths {"@/*": ["./src/*"]}. TypeScript strict mode goes HERE, not in next.config.ts.
-- "postcss.config.mjs" — PostCSS config${q.styling === "tailwind" ? ` with @tailwindcss/postcss plugin: export default { plugins: { '@tailwindcss/postcss': {} } }` : ""}.
-${q.styling === "tailwind" ? `- "src/app/globals.css" — CRITICAL: This project uses Tailwind CSS v4. The ONLY correct first line is: @import "tailwindcss"; — do NOT use @tailwind base, @tailwind components, or @tailwind utilities (those are Tailwind v3 and will cause a fatal error). After the import, add CSS custom properties for theme colors and fonts based on ${q.design_style} style and ${q.color_scheme} scheme.` : ""}` : ""}
-${q.framework === "astro" ? `- "astro.config.mjs" — Astro config
-- "tsconfig.json" — TypeScript config for Astro` : ""}
-${q.framework === "remix" ? `- "remix.config.js" — Remix config
-- "tsconfig.json" — TypeScript config for Remix` : ""}
-${q.framework === "vue" ? `- "nuxt.config.ts" — Nuxt 3 config
-- "tsconfig.json" — TypeScript config` : ""}
-- ".gitignore" — Include: .env .env.local .env*.local node_modules .next dist build out .DS_Store *.log .vercel
-- ".eslintrc.json" — ESLint for ${q.language} with next/core-web-vitals
-- ".prettierrc" — Prettier: semi true, singleQuote false, tabWidth 2, trailingComma es5
-${q.features?.includes("pwa") ? `- "public/manifest.json" — PWA manifest with name, short_name "${q.project_name}", icons array, theme_color, background_color, display standalone` : ""}
+Generate these files exactly as named:
+${configFiles.join("\n")}
 
 ${jsonInstruction()}`;
 }
@@ -310,15 +326,40 @@ ${jsonInstruction()}`;
   return "";
 }
 
-// ─── Step 5a: Root app files (layout, page, globals, middleware) ──────────────
+// ─── Step 5a: Root app files (layout, page) ──────────────────────────────────
+
+function getHomeSections(q: ProjectQuestionnaire): string[] {
+  return q.project_type === "ecommerce" || q.project_type === "marketplace"
+    ? ["HeroSection", "CategoryGrid", "FeaturedProducts", "PromoBanner", "BenefitsRow", "NewsletterSection"]
+    : q.project_type === "saas" || q.project_type === "dashboard"
+    ? ["HeroSection", "FeaturesGrid", "TestimonialsSection", "PricingSection", "CTASection"]
+    : q.project_type === "landing"
+    ? ["HeroSection", "FeaturesGrid", "TestimonialsSection", "PricingSection", "FAQSection", "CTASection"]
+    : q.project_type === "blog"
+    ? ["HeroSection", "FeaturedPosts", "CategoriesRow", "NewsletterSection"]
+    : q.project_type === "photography"
+    ? ["HeroSection", "GalleryPreview", "AboutSection", "ContactSection"]
+    : q.project_type === "portfolio"
+    ? ["HeroSection", "ProjectsPreview", "SkillsSection", "AboutSection", "ContactSection"]
+    : q.project_type === "booking"
+    ? ["HeroSection", "ServicesGrid", "HowItWorks", "TestimonialsSection", "CTASection"]
+    : q.project_type === "social" || q.project_type === "forum"
+    ? ["HeroSection", "FeedPreview", "FeaturesGrid", "CTASection"]
+    : q.project_type === "directory"
+    ? ["HeroSection", "SearchSection", "FeaturedListings", "CategoriesGrid", "CTASection"]
+    : q.project_type === "game"
+    ? ["HeroSection", "GamePreview", "FeaturesGrid", "CTASection"]
+    : ["HeroSection", "FeaturesGrid", "CTASection"];
+}
 
 export function getRootFilesPrompt(q: ProjectQuestionnaire): string {
   const t = tsx(q);
-  const e = ext(q);
 
   const files: string[] = [];
 
   if (q.framework === "nextjs") {
+    const homeSections = getHomeSections(q);
+
     files.push(`"src/app/layout.${t}":
   - Root layout component.
   - Font setup from next/font/google: ${
@@ -342,101 +383,12 @@ export function getRootFilesPrompt(q: ProjectQuestionnaire): string {
   - Link back to homepage
   - Styled consistently with the ${q.design_style} design style`);
 
-    // Generate page.tsx + every section component it imports in the SAME step
-    // so there are never missing module errors.
-    const homeSections = q.project_type === "ecommerce" || q.project_type === "marketplace"
-      ? ["HeroSection", "CategoryGrid", "FeaturedProducts", "PromoBanner", "BenefitsRow", "NewsletterSection"]
-      : q.project_type === "saas" || q.project_type === "dashboard"
-      ? ["HeroSection", "FeaturesGrid", "TestimonialsSection", "PricingSection", "CTASection"]
-      : q.project_type === "landing"
-      ? ["HeroSection", "FeaturesGrid", "TestimonialsSection", "PricingSection", "FAQSection", "CTASection"]
-      : q.project_type === "blog"
-      ? ["HeroSection", "FeaturedPosts", "CategoriesRow", "NewsletterSection"]
-      : q.project_type === "photography"
-      ? ["HeroSection", "GalleryPreview", "AboutSection", "ContactSection"]
-      : q.project_type === "portfolio"
-      ? ["HeroSection", "ProjectsPreview", "SkillsSection", "AboutSection", "ContactSection"]
-      : q.project_type === "booking"
-      ? ["HeroSection", "ServicesGrid", "HowItWorks", "TestimonialsSection", "CTASection"]
-      : q.project_type === "social" || q.project_type === "forum"
-      ? ["HeroSection", "FeedPreview", "FeaturesGrid", "CTASection"]
-      : q.project_type === "directory"
-      ? ["HeroSection", "SearchSection", "FeaturedListings", "CategoriesGrid", "CTASection"]
-      : q.project_type === "game"
-      ? ["HeroSection", "GamePreview", "FeaturesGrid", "CTASection"]
-      : ["HeroSection", "FeaturesGrid", "CTASection"];
-
     files.push(`"src/app/page.${t}":
-  - Homepage that imports ONLY these section components (all generated below):
+  - Homepage that imports ONLY these section components (generated separately):
     ${homeSections.map(s => `import ${s} from '@/components/home/${s}';`).join("\n    ")}
   - page.tsx body: render sections in order: <main>{${homeSections.map(s => `<${s} />`).join("")}}</main>
-  - No inline section code in page.tsx — everything is in the component files below
+  - No inline section code in page.tsx — everything is in the component files
   - Content about: ${q.description}`);
-
-    // Co-generate every section component that page.tsx imports
-    homeSections.forEach(section => {
-      const sectionDesc =
-        section === "HeroSection" ? `Full-width hero. Large headline, subheadline relevant to "${q.description}". ${q.project_type === "ecommerce" || q.project_type === "marketplace" ? 'Two CTA buttons (Shop Now + View Deals). Badge: "Free shipping over $50". Background: bold gradient.' : "Primary CTA button. Gradient or image background. Real copy."} ${q.animations !== "none" ? "Entrance animations." : ""}` :
-        section === "CategoryGrid" ? `4-6 category cards in a responsive grid. Each: icon/emoji, category name, item count. Hover lift effect. Links to /products?category=X.` :
-        section === "FeaturedProducts" ? `4-column responsive grid of product cards. Each card: gradient placeholder image, product name, price (bold), star rating row, "Add to Cart" button. Real product names from: ${q.description}.` :
-        section === "PromoBanner" ? `Full-width colored strip. Bold headline, discount offer, CTA button. High-contrast colors.` :
-        section === "BenefitsRow" ? `Row of 4 benefit items: Free Shipping, Easy Returns, Secure Payment, 24/7 Support. Each: lucide icon + title + short description.` :
-        section === "NewsletterSection" ? `Email signup. Headline, subheadline, email input + submit button in a row. Success state shows confirmation message.` :
-        section === "FeaturesGrid" ? `3-column grid (1 col mobile) of feature cards. 6 features with lucide icon in colored box, title, description. Relevant to: ${q.description}.` :
-        section === "TestimonialsSection" ? `3 testimonial cards in a grid. Each: star rating, quote, avatar placeholder circle, name, role/company. Real-sounding names and quotes.` :
-        section === "PricingSection" ? `3 pricing plan cards. Middle plan highlighted with primary color border + "Most popular" badge. Features checklist. CTA button.` :
-        section === "CTASection" ? `Full-width section with large headline, subheadline, primary CTA button. Contrasting background color.` :
-        section === "FAQSection" ? `Accordion FAQ. 6 questions and answers relevant to ${q.description}. Click to expand/collapse.` :
-        section === "FeaturedPosts" ? `Grid of 3 blog post preview cards. Each: cover image placeholder, category badge, title, excerpt, author + date.` :
-        section === "CategoriesRow" ? `Horizontal scrollable row of category pills/cards with icons.` :
-        section === "GalleryPreview" ? `4-6 photo placeholder cards in a masonry-style grid. "View All" button.` :
-        section === "AboutSection" ? `Two-column layout: text left (headline, bio/description, bullet points), image placeholder right.` :
-        section === "ContactSection" ? `Contact form: name, email, message fields + submit button. Success/error states.` :
-        section === "ProjectsPreview" ? `Grid of 3 portfolio project cards with image placeholder, title, tags, links.` :
-        section === "SkillsSection" ? `Skill badges grid grouped by category (Frontend, Backend, Tools).` :
-        section === "ServicesGrid" ? `Grid of service cards: icon, name, description, price, "Book Now" button.` :
-        section === "HowItWorks" ? `3-step process with numbered circles, title, description per step. Connected by line on desktop.` :
-        section === "FeedPreview" ? `2-3 sample post cards showing the platform's content format.` :
-        section === "GamePreview" ? `Game screenshot/preview area with description and play button.` :
-        section === "FeaturedListings" ? `Grid of listing cards with image, title, price/category, rating.` :
-        section === "SearchSection" ? `Large search input with filters. Prominent placement.` :
-        section === "CategoriesGrid" ? `Grid of category cards with icon and count.` :
-        `Section for ${section} relevant to ${q.description}.`;
-
-      files.push(`"src/components/home/${section}.${t}":
-  - ${sectionDesc}
-  - Fully styled with ${q.styling} using ${q.design_style} design and ${q.color_scheme} color scheme
-  - Production quality — polished, not a template placeholder
-  - Uses lucide-react for icons, real copy relevant to: ${q.description}`);
-    });
-
-    if (q.auth !== "none") {
-      files.push(`"src/app/(auth)/login/page.${t}":
-  - Sign-in form with email + password fields
-  - Form submission calls ${q.auth} sign-in
-  - Link to signup page
-  - Error display on invalid credentials
-  - Styled consistently`);
-
-      files.push(`"src/app/(auth)/signup/page.${t}":
-  - Registration form with name, email, password fields
-  - Form submission calls ${q.auth} sign-up
-  - Link to login page
-  - Styled consistently`);
-    }
-
-    if (q.auth === "supabase_auth" || q.auth === "nextauth" || q.auth === "clerk") {
-      files.push(`"src/middleware.${e}":
-  - Protect routes: /dashboard/*, /account/*, /admin/*
-  - Redirect unauthenticated users to /login
-  - Use ${q.auth === "clerk" ? "clerkMiddleware from @clerk/nextjs/server" : q.auth === "nextauth" ? "withAuth from next-auth/middleware" : "createServerClient from @supabase/ssr to check session"}`);
-    }
-
-    if (q.auth === "supabase_auth") {
-      files.push(`"src/app/auth/callback/route.${e}":
-  - Exchange Supabase auth code for session
-  - Redirect to /dashboard on success`);
-    }
   }
 
   if (q.framework === "astro") {
@@ -472,6 +424,120 @@ CRITICAL component structure rules:
 Every file must be 100% complete and functional. Use ${q.styling === "tailwind" ? "Tailwind CSS classes" : q.styling} for styling.
 Every client component (uses hooks, event handlers, browser APIs) MUST have "use client"; as line 1.
 Never @apply a custom class from @layer components — only @apply built-in Tailwind utilities.
+
+${jsonInstruction()}`;
+}
+
+// ─── Step 5a-ii: Home section components (separate to avoid truncation) ───────
+
+export function getHomeSectionsPrompt(q: ProjectQuestionnaire): string {
+  if (q.framework !== "nextjs") return "";
+  const t = tsx(q);
+  const homeSections = getHomeSections(q);
+
+  const files: string[] = [];
+
+  homeSections.forEach(section => {
+    const sectionDesc =
+      section === "HeroSection" ? `Full-width hero. Large headline, subheadline relevant to "${q.description}". ${q.project_type === "ecommerce" || q.project_type === "marketplace" ? 'Two CTA buttons (Shop Now + View Deals). Badge: "Free shipping over $50". Background: bold gradient.' : "Primary CTA button. Gradient or image background. Real copy."} ${q.animations !== "none" ? "Entrance animations." : ""}` :
+      section === "CategoryGrid" ? `4-6 category cards in a responsive grid. Each: icon/emoji, category name, item count. Hover lift effect. Links to /products?category=X.` :
+      section === "FeaturedProducts" ? `4-column responsive grid of product cards. Each card: gradient placeholder image, product name, price (bold), star rating row, "Add to Cart" button. Real product names from: ${q.description}.` :
+      section === "PromoBanner" ? `Full-width colored strip. Bold headline, discount offer, CTA button. High-contrast colors.` :
+      section === "BenefitsRow" ? `Row of 4 benefit items: Free Shipping, Easy Returns, Secure Payment, 24/7 Support. Each: lucide icon + title + short description.` :
+      section === "NewsletterSection" ? `Email signup. Headline, subheadline, email input + submit button in a row. Success state shows confirmation message.` :
+      section === "FeaturesGrid" ? `3-column grid (1 col mobile) of feature cards. 6 features with lucide icon in colored box, title, description. Relevant to: ${q.description}.` :
+      section === "TestimonialsSection" ? `3 testimonial cards in a grid. Each: star rating, quote, avatar placeholder circle, name, role/company. Real-sounding names and quotes.` :
+      section === "PricingSection" ? `3 pricing plan cards. Middle plan highlighted with primary color border + "Most popular" badge. Features checklist. CTA button.` :
+      section === "CTASection" ? `Full-width section with large headline, subheadline, primary CTA button. Contrasting background color.` :
+      section === "FAQSection" ? `Accordion FAQ. 6 questions and answers relevant to ${q.description}. Click to expand/collapse.` :
+      section === "FeaturedPosts" ? `Grid of 3 blog post preview cards. Each: cover image placeholder, category badge, title, excerpt, author + date.` :
+      section === "CategoriesRow" ? `Horizontal scrollable row of category pills/cards with icons.` :
+      section === "GalleryPreview" ? `4-6 photo placeholder cards in a masonry-style grid. "View All" button.` :
+      section === "AboutSection" ? `Two-column layout: text left (headline, bio/description, bullet points), image placeholder right.` :
+      section === "ContactSection" ? `Contact form: name, email, message fields + submit button. Success/error states.` :
+      section === "ProjectsPreview" ? `Grid of 3 portfolio project cards with image placeholder, title, tags, links.` :
+      section === "SkillsSection" ? `Skill badges grid grouped by category (Frontend, Backend, Tools).` :
+      section === "ServicesGrid" ? `Grid of service cards: icon, name, description, price, "Book Now" button.` :
+      section === "HowItWorks" ? `3-step process with numbered circles, title, description per step. Connected by line on desktop.` :
+      section === "FeedPreview" ? `2-3 sample post cards showing the platform's content format.` :
+      section === "GamePreview" ? `Game screenshot/preview area with description and play button.` :
+      section === "FeaturedListings" ? `Grid of listing cards with image, title, price/category, rating.` :
+      section === "SearchSection" ? `Large search input with filters. Prominent placement.` :
+      section === "CategoriesGrid" ? `Grid of category cards with icon and count.` :
+      `Section for ${section} relevant to ${q.description}.`;
+
+    files.push(`"src/components/home/${section}.${t}":
+  - ${sectionDesc}
+  - Fully styled with ${q.styling} using ${q.design_style} design and ${q.color_scheme} color scheme
+  - Production quality — polished, not a template placeholder
+  - Uses lucide-react for icons, real copy relevant to: ${q.description}`);
+  });
+
+  return `Generate home page section components as a JSON object. Keys = FULL file paths from project root. Values = complete file contents.
+
+${stackSummary(q)}
+
+Files to generate:
+${files.map(f => `- ${f}`).join("\n\n")}
+
+IMPORTANT: These files are imported by src/app/page.tsx which uses:
+${homeSections.map(s => `import ${s} from '@/components/home/${s}';`).join("\n")}
+
+Each component MUST use "export default function ${"{ComponentName}"}()" so the imports above work.
+Every file must be 100% complete — no truncation, no placeholders, no "..." or "// TODO".
+Use ${q.styling === "tailwind" ? "Tailwind CSS classes" : q.styling} for styling.
+Client components using hooks/event handlers MUST have "use client"; as line 1.
+Never @apply a custom class — only built-in Tailwind utilities.
+
+${jsonInstruction()}`;
+}
+
+// ─── Step 5a-iii: Auth pages + middleware (separate call) ─────────────────────
+
+export function getAuthPagesPrompt(q: ProjectQuestionnaire): string {
+  if (q.framework !== "nextjs") return "";
+  if (q.auth === "none") return "";
+
+  const t = tsx(q);
+  const e = ext(q);
+  const files: string[] = [];
+
+  files.push(`"src/app/(auth)/login/page.${t}":
+  - Sign-in form with email + password fields
+  - Form submission calls ${q.auth} sign-in
+  - Link to signup page
+  - Error display on invalid credentials
+  - Styled consistently with ${q.design_style} design`);
+
+  files.push(`"src/app/(auth)/signup/page.${t}":
+  - Registration form with name, email, password fields
+  - Form submission calls ${q.auth} sign-up
+  - Link to login page
+  - Styled consistently with ${q.design_style} design`);
+
+  if (q.auth === "supabase_auth" || q.auth === "nextauth" || q.auth === "clerk") {
+    files.push(`"src/middleware.${e}":
+  - Protect routes: /dashboard/*, /account/*, /admin/*
+  - Redirect unauthenticated users to /login
+  - Use ${q.auth === "clerk" ? "clerkMiddleware from @clerk/nextjs/server" : q.auth === "nextauth" ? "withAuth from next-auth/middleware" : "createServerClient from @supabase/ssr to check session"}`);
+  }
+
+  if (q.auth === "supabase_auth") {
+    files.push(`"src/app/auth/callback/route.${e}":
+  - Exchange Supabase auth code for session
+  - Redirect to /dashboard on success`);
+  }
+
+  return `Generate authentication pages and middleware as a JSON object. Keys = FULL file paths from project root. Values = complete file contents.
+
+${stackSummary(q)}
+
+Files to generate:
+${files.map(f => `- ${f}`).join("\n\n")}
+
+Every file must be 100% complete and functional.
+Client components using hooks/event handlers MUST have "use client"; as line 1.
+Use ${q.styling === "tailwind" ? "Tailwind CSS classes" : q.styling} for styling.
 
 ${jsonInstruction()}`;
 }
