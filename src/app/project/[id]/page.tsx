@@ -78,8 +78,18 @@ export default function ProjectPage() {
     try {
       const response = await fetch(`/api/projects/${id}/generate`, { method: "POST" });
       if (!response.ok) {
-        const text = await response.text();
-        setError(text);
+        if (response.status === 404) {
+          setError("Generation endpoint not found. Try restarting the dev server (rm -rf .next && npm run dev).");
+        } else if (response.status === 409) {
+          setError("This project has already been generated. Refresh the page to see your files.");
+        } else {
+          try {
+            const json = await response.json();
+            setError(json.error || `Generation failed (${response.status})`);
+          } catch {
+            setError(`Generation failed with status ${response.status}. Try restarting the dev server.`);
+          }
+        }
         setIsGenerating(false);
         return;
       }
