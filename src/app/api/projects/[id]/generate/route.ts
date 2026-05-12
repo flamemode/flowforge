@@ -65,10 +65,17 @@ export async function POST(
 
         // Save files in batches of 20 to avoid Supabase payload size limits
         if (files.length > 0) {
+          // Deduplicate by path — keep last occurrence if generator emitted the same path twice
+          const seen = new Map<string, typeof files[0]>();
+          for (const f of files) seen.set(f.path, f);
+          const unique = Array.from(seen.values());
+
           const BATCH = 20;
-          for (let i = 0; i < files.length; i += BATCH) {
-            const batch = files.slice(i, i + BATCH).map((f) => ({ ...f, project_id: id }));
-            const { error: insertError } = await supabase.from("generated_files").insert(batch);
+          for (let i = 0; i < unique.length; i += BATCH) {
+            const batch = unique.slice(i, i + BATCH).map((f) => ({ ...f, project_id: id }));
+            const { error: insertError } = await supabase
+              .from("generated_files")
+              .upsert(batch, { onConflict: "project_id,path", ignoreDuplicates: false });
             if (insertError) {
               console.error(`Failed to save files batch ${i}-${i + BATCH}:`, insertError);
               throw new Error(`Database error saving files: ${insertError.message}`);
