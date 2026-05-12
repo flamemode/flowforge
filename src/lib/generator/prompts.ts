@@ -57,7 +57,7 @@ Requirements:
 - scripts: { "dev": "next dev", "build": "next build", "start": "next start", "lint": "next lint", "type-check": "tsc --noEmit" }
 
 Required dependencies based on stack:
-${q.framework === "nextjs" ? "- next: ^15.0.0, react: ^19.0.0, react-dom: ^19.0.0" : ""}
+${q.framework === "nextjs" ? `- next: ${q.cms === "payload" ? "15.4.11" : "^15.0.0"}, react: ^19.0.0, react-dom: ^19.0.0` : ""}
 ${q.styling === "tailwind" ? "- tailwindcss: ^4.0.0, @tailwindcss/postcss: ^4.0.0" : ""}
 ${q.styling === "styled_components" ? "- styled-components: ^6.0.0" : ""}
 - clsx: ^2.1.0, tailwind-merge: ^2.5.0
