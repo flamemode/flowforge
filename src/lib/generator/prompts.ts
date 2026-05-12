@@ -37,6 +37,7 @@ OUTPUT FORMAT:
 function stackSummary(q: ProjectQuestionnaire): string {
   return [
     `Project name: ${q.project_name}`,
+    q.tagline ? `Tagline: "${q.tagline}"` : null,
     `Project type: ${q.project_type}`,
     `Framework: ${q.framework}`,
     `Language: ${q.language}`,
@@ -50,6 +51,11 @@ function stackSummary(q: ProjectQuestionnaire): string {
     q.color_scheme ? `Color scheme: ${q.color_scheme}` : null,
     q.animations ? `Animations: ${q.animations}` : null,
     q.font_pairing ? `Typography: ${q.font_pairing}` : null,
+    q.industry ? `Industry: ${q.industry}` : null,
+    q.content_tone ? `Content tone: ${q.content_tone}` : null,
+    q.cta_goal ? `Primary CTA goal: ${q.cta_goal.replace(/_/g, " ")}` : null,
+    q.target_audience ? `Target audience: ${q.target_audience}` : null,
+    q.nav_pages && q.nav_pages.length > 0 ? `Navigation pages: ${q.nav_pages.join(", ")}` : null,
     q.features && q.features.length > 0 ? `Features: ${q.features.join(", ")}` : null,
     `Description: ${q.description}`,
   ].filter(Boolean).join("\n");
@@ -74,8 +80,12 @@ ${stackSummary(q)}
 Requirements:
 - "name": "${name}"
 - Use EXACT pinned versions listed below — do not substitute newer versions. These are tested compatible.
-- devDependencies: typescript: ^5.0.0, eslint: ^9.0.0, prettier: ^3.0.0, @types/node: ^22.0.0, @types/react: ^19.0.0, @types/react-dom: ^19.0.0
-- scripts: { "dev": "next dev", "build": "next build", "start": "next start", "lint": "next lint", "type-check": "tsc --noEmit" }
+- devDependencies: typescript: ^5.0.0, eslint: ^9.0.0, prettier: ^3.0.0, @types/node: ^22.0.0${q.framework === "nextjs" || q.framework === "remix" ? ", @types/react: ^19.0.0, @types/react-dom: ^19.0.0" : ""}
+${q.framework === "nextjs" ? `- scripts: { "dev": "next dev", "build": "next build", "start": "next start", "lint": "next lint", "type-check": "tsc --noEmit" }` :
+  q.framework === "astro" ? `- scripts: { "dev": "astro dev", "build": "astro build", "preview": "astro preview", "lint": "eslint .", "type-check": "astro check" }` :
+  q.framework === "remix" ? `- scripts: { "dev": "remix vite:dev", "build": "remix vite:build", "start": "remix-serve ./build/server/index.js", "lint": "eslint .", "type-check": "tsc --noEmit" }` :
+  q.framework === "vue" ? `- scripts: { "dev": "nuxt dev", "build": "nuxt build", "generate": "nuxt generate", "preview": "nuxt preview", "lint": "eslint .", "type-check": "nuxt typecheck" }` :
+  `- scripts: { "dev": "npx serve .", "build": "echo 'No build step needed'", "lint": "eslint ." }`}
 
 ${q.node_version === "18" ? `NODE 18 CONSTRAINT: Node 18 does not support some newer package APIs. Use these safe versions:
 - next: 14.2.18 (Next 15 requires Node 18.18+, pin to 14 for safety)
@@ -87,9 +97,13 @@ ${q.dev_os === "macos_catalina" ? `MACOS CATALINA CONSTRAINT: macOS 10.15 cannot
 
 Required dependencies (use these exact version ranges):
 ${q.framework === "nextjs" ? `- next: ${q.node_version === "18" ? "14.2.18" : q.cms === "payload" ? "15.4.11" : "^15.0.0"}, react: ^19.0.0, react-dom: ^19.0.0` : ""}
-${q.styling === "tailwind" ? "- tailwindcss: ^4.0.0, @tailwindcss/postcss: ^4.0.0" : ""}
+${q.framework === "astro" ? `- astro: ^5.0.0, react: ^19.0.0, react-dom: ^19.0.0, @astrojs/react: ^4.0.0${q.styling === "tailwind" ? ", @astrojs/tailwind: ^6.0.0" : ""}` : ""}
+${q.framework === "remix" ? `- @remix-run/node: ^2.15.0, @remix-run/react: ^2.15.0, @remix-run/serve: ^2.15.0, react: ^19.0.0, react-dom: ^19.0.0, isbot: ^5.0.0\n- @remix-run/dev: ^2.15.0 (devDependency), vite: ^6.0.0 (devDependency), vite-tsconfig-paths: ^5.0.0 (devDependency)` : ""}
+${q.framework === "vue" ? `- nuxt: ^3.14.0, vue: ^3.5.0${q.styling === "tailwind" ? ", @nuxtjs/tailwindcss: ^6.0.0" : ""}` : ""}
+${q.framework === "plain_html" && q.styling === "tailwind" ? `- tailwindcss: ^3.4.0 (devDependency)\n- serve: ^14.0.0 (devDependency — for local dev server)` : ""}
+${q.styling === "tailwind" && q.framework === "nextjs" ? "- tailwindcss: ^4.0.0, @tailwindcss/postcss: ^4.0.0" : ""}
 ${q.styling === "styled_components" ? "- styled-components: ^6.0.0" : ""}
-- clsx: ^2.1.0, tailwind-merge: ^2.5.0, lucide-react: ^0.460.0
+${q.framework === "nextjs" || q.framework === "remix" ? "- clsx: ^2.1.0, tailwind-merge: ^2.5.0, lucide-react: ^0.460.0" : q.framework === "vue" ? "- clsx: ^2.1.0" : "- clsx: ^2.1.0, tailwind-merge: ^2.5.0"}
 ${q.database === "supabase" ? "- @supabase/supabase-js: ^2.46.0, @supabase/ssr: ^0.5.0" : ""}
 ${q.database === "prisma_postgres" || q.database === "planetscale" ? "- @prisma/client: ^6.0.0\n- prisma: ^6.0.0 (devDependency)" : ""}
 ${q.database === "mongodb" ? "- mongoose: ^8.0.0" : ""}
@@ -116,7 +130,7 @@ ${q.features?.includes("analytics") ? "- @vercel/analytics: ^1.3.0" : ""}
 ${q.features?.includes("pwa") ? "- @ducanh2912/next-pwa: ^10.0.0" : ""}
 ${q.project_type === "game" ? "- phaser: ^3.86.0" : ""}
 
-Include an "overrides" field to force React 19 across all transitive deps:
+${q.framework === "nextjs" || q.framework === "remix" || q.framework === "astro" ? `Include an "overrides" field to force React 19 across all transitive deps:
 {
   "overrides": {
     "react": "^19.0.0",
@@ -124,7 +138,13 @@ Include an "overrides" field to force React 19 across all transitive deps:
     "esbuild": "0.17.19",
     "tsx": "3.14.0"` : ""}
   }
-}
+}` : q.dev_os === "macos_catalina" ? `Include an "overrides" field for Catalina compatibility:
+{
+  "overrides": {
+    "esbuild": "0.17.19",
+    "tsx": "3.14.0"
+  }
+}` : ""}
 
 Include an "engines" field: { "node": ">=${q.node_version ?? "18"}.0.0" }
 
@@ -392,20 +412,125 @@ export function getRootFilesPrompt(q: ProjectQuestionnaire): string {
   }
 
   if (q.framework === "astro") {
+    const homeSections = getHomeSections(q);
     files.push(
-      `"src/layouts/Layout.astro" — Base layout with <head> (meta, title, fonts), nav slot, <main>, footer`,
-      `"src/pages/index.astro" — Homepage for ${q.project_type} with hero and features sections`,
-      `"src/styles/global.css" — CSS reset, custom properties, base styles`
+      `"src/layouts/Layout.astro":
+  - Base HTML layout with <!DOCTYPE html>, <head> (charset, viewport, title "${q.project_name}", meta description, fonts for ${q.font_pairing ?? "inter"})
+  - <body> wraps: Navbar component, <slot /> (Astro content slot), Footer component
+  - Import Navbar from '../components/layout/Navbar.astro' and Footer from '../components/layout/Footer.astro'
+  - ${q.styling === "tailwind" ? "Include Tailwind CSS import" : "Link to global.css"}
+  - ${q.color_scheme === "dark" ? "Add class='dark' to html" : q.color_scheme === "system_toggle" ? "Script to check localStorage/system preference for dark class" : ""}`,
+      `"src/pages/index.astro":
+  - Homepage that imports Layout and section components:
+    ${homeSections.map(s => `import ${s} from '../components/home/${s}.astro';`).join("\n    ")}
+  - Wraps content in <Layout title="${q.project_name}">
+  - Renders sections in order: ${homeSections.map(s => `<${s} />`).join(" ")}
+  - Content about: ${q.description}`,
+      `"src/styles/global.css":
+  - ${q.styling === "tailwind" ? "@tailwind base; @tailwind components; @tailwind utilities;" : "CSS reset, custom properties (colors, spacing, fonts), base element styles"}
+  - Custom font imports if needed
+  - Global body styles: font-family, color, background`
     );
   }
 
   if (q.framework === "remix") {
+    const homeSections = getHomeSections(q);
     files.push(
-      `"app/root.tsx" — Remix root with Links, Meta, Scripts, Outlet, global error boundary`,
-      `"app/routes/_index.tsx" — Homepage for ${q.project_type}`,
-      `"app/styles/global.css" — Global styles`
+      `"app/root.tsx":
+  - Remix root component with: Links, Meta, Scripts, ScrollRestoration, Outlet
+  - import Navbar from '~/components/layout/Navbar' and Footer from '~/components/layout/Footer'
+  - Global error boundary (ErrorBoundary export) with user-friendly error page
+  - links() function returns: global CSS file
+  - Layout wraps: Navbar, <main><Outlet /></main>, Footer
+  - ${q.color_scheme === "dark" ? 'Add className="dark" to html' : q.color_scheme === "system_toggle" ? "Script for dark mode preference detection" : ""}`,
+      `"app/routes/_index.tsx":
+  - Homepage that imports section components:
+    ${homeSections.map(s => `import ${s} from '~/components/home/${s}';`).join("\n    ")}
+  - meta() function returns title "${q.project_name}" and description
+  - Default export renders: ${homeSections.map(s => `<${s} />`).join(" ")}
+  - Content about: ${q.description}`,
+      `"app/styles/global.css":
+  - ${q.styling === "tailwind" ? "@tailwind base; @tailwind components; @tailwind utilities;" : "CSS reset, custom properties, base styles"}
+  - Custom font imports
+  - Global body styles`
     );
   }
+
+  if (q.framework === "vue") {
+    const homeSections = getHomeSections(q);
+    files.push(
+      `"app.vue":
+  - Root Nuxt component with <NuxtLayout><NuxtPage /></NuxtLayout>
+  - ${q.color_scheme === "system_toggle" ? "Include color mode script" : ""}`,
+      `"layouts/default.vue":
+  - Default layout: imports Navbar + Footer from ~/components/layout/
+  - <template>: <Navbar />, <main><slot /></main>, <Footer />`,
+      `"pages/index.vue":
+  - Homepage with <script setup> and <template>
+  - Import section components:
+    ${homeSections.map(s => `import ${s} from '~/components/home/${s}.vue';`).join("\n    ")}
+  - Template renders sections in order: ${homeSections.map(s => `<${s} />`).join(" ")}
+  - useHead() sets title "${q.project_name}" and meta description
+  - Content about: ${q.description}`,
+      `"assets/css/main.css":
+  - ${q.styling === "tailwind" ? "@tailwind base; @tailwind components; @tailwind utilities;" : "CSS reset, custom properties, base styles"}
+  - Custom font imports`
+    );
+  }
+
+  if (q.framework === "plain_html") {
+    files.push(
+      `"index.html":
+  - Complete HTML5 page with <!DOCTYPE html>, <head>, <body>
+  - Head: charset, viewport, title "${q.project_name}", meta description, ${q.styling === "tailwind" ? "Tailwind CDN script" : "link to styles.css"}
+  - Body: <header> with nav, <main> with homepage sections (hero, features, testimonials, CTA), <footer>
+  - All content inline — this is a complete, working standalone page
+  - Content about: ${q.description}
+  ${q.content_tone ? `- Content tone: ${q.content_tone}` : ""}
+  ${q.industry ? `- Industry-specific content for: ${q.industry}` : ""}`,
+      `"styles.css":
+  - ${q.styling === "tailwind" ? "Tailwind utility overrides and custom component styles" : "Complete CSS: reset, custom properties, layout, components, responsive breakpoints"}
+  - Design style: ${q.design_style}
+  - Color scheme: ${q.color_scheme}`,
+      `"script.js":
+  - Vanilla JavaScript for interactivity: mobile menu toggle, smooth scroll, form handling
+  - ${q.color_scheme === "system_toggle" ? "Dark/light mode toggle with localStorage" : ""}
+  - ${q.animations !== "none" ? "Intersection Observer for scroll animations" : ""}`
+    );
+  }
+
+  // Framework-specific structural rules
+  const structureRules =
+    q.framework === "astro" ? `
+CRITICAL structure rules:
+- Layout.astro wraps all pages — navbar and footer live ONLY in the layout
+- Pages use <Layout> wrapper and contain only page-specific sections
+- Interactive islands (forms, toggles) must use client:load or client:visible
+- Import paths are relative (../components/...) not aliases` :
+    q.framework === "remix" ? `
+CRITICAL structure rules:
+- root.tsx handles the document shell (html, head, body) and renders Navbar + Footer around Outlet
+- Route files contain ONLY page content — never duplicate nav/footer in route files
+- Import via ~/components/ alias
+- Interactive parts are client-side by default in Remix (no "use client" needed)` :
+    q.framework === "vue" ? `
+CRITICAL structure rules:
+- layouts/default.vue handles Navbar + Footer around the <slot />
+- Page files contain ONLY page content inside <template>
+- Use <script setup lang="ts"> for composition API
+- Nuxt auto-imports composables and components from ~/components/` :
+    q.framework === "plain_html" ? `
+CRITICAL structure rules:
+- Each HTML file must be fully self-contained and openable directly in a browser
+- Include all CSS inline or via stylesheet link
+- Navigation must be consistent across all pages` :
+    `
+CRITICAL component structure rules:
+- NEVER put Navbar, Footer, Sidebar, or any reusable UI inside page.tsx inline — always import from @/components/layout/
+- src/app/layout.tsx must import <Navbar /> and <Footer /> and render them around {children}
+- page.tsx files contain ONLY page-specific content sections
+- page.tsx may ONLY import components explicitly listed — never invent import paths
+- Every client component (hooks, event handlers) MUST have "use client"; as line 1`;
 
   return `Generate root/layout application files as a JSON object. Keys = FULL file paths from project root. Values = complete file contents.
 
@@ -414,16 +539,10 @@ ${stackSummary(q)}
 Files to generate:
 ${files.map(f => `- ${f}`).join("\n\n")}
 
-CRITICAL component structure rules:
-- NEVER put Navbar, Footer, Sidebar, or any reusable UI inside page.tsx inline — always import them from @/components/layout/Navbar, @/components/layout/Footer etc.
-- src/app/layout.tsx must import <Navbar /> and <Footer /> from @/components/layout/ and render them around {children}
-- page.tsx files contain ONLY page-specific content sections — no nav, no footer, no header chrome
-- page.tsx may ONLY import components that are explicitly listed as files being generated in THIS response — never invent import paths for files not in this list
-- Every component file is independently editable without touching page.tsx
+${structureRules}
 
 Every file must be 100% complete and functional. Use ${q.styling === "tailwind" ? "Tailwind CSS classes" : q.styling} for styling.
-Every client component (uses hooks, event handlers, browser APIs) MUST have "use client"; as line 1.
-Never @apply a custom class from @layer components — only @apply built-in Tailwind utilities.
+${q.styling === "tailwind" ? "Never @apply a custom class from @layer components — only @apply built-in Tailwind utilities." : ""}
 
 ${jsonInstruction()}`;
 }
@@ -431,24 +550,29 @@ ${jsonInstruction()}`;
 // ─── Step 5a-ii: Home section components (separate to avoid truncation) ───────
 
 export function getHomeSectionsPrompt(q: ProjectQuestionnaire): string {
-  if (q.framework !== "nextjs") return "";
-  const t = tsx(q);
   const homeSections = getHomeSections(q);
-
   const files: string[] = [];
+
+  // Determine component file extension based on framework
+  const compExt = q.framework === "astro" ? "astro" : q.framework === "vue" ? "vue" : tsx(q);
+  const compDir = q.framework === "astro" ? "src/components/home" :
+                  q.framework === "vue" ? "components/home" :
+                  q.framework === "remix" ? "app/components/home" :
+                  q.framework === "plain_html" ? "components" :
+                  "src/components/home";
 
   homeSections.forEach(section => {
     const sectionDesc =
-      section === "HeroSection" ? `Full-width hero. Large headline, subheadline relevant to "${q.description}". ${q.project_type === "ecommerce" || q.project_type === "marketplace" ? 'Two CTA buttons (Shop Now + View Deals). Badge: "Free shipping over $50". Background: bold gradient.' : "Primary CTA button. Gradient or image background. Real copy."} ${q.animations !== "none" ? "Entrance animations." : ""}` :
-      section === "CategoryGrid" ? `4-6 category cards in a responsive grid. Each: icon/emoji, category name, item count. Hover lift effect. Links to /products?category=X.` :
+      section === "HeroSection" ? `Full-width hero. Large headline, subheadline relevant to "${q.description}". ${q.project_type === "ecommerce" || q.project_type === "marketplace" ? 'Two CTA buttons (Shop Now + View Deals). Badge: "Free shipping over $50". Background: bold gradient.' : `Primary CTA button${q.cta_goal ? ` with text "${q.cta_goal.replace(/_/g, " ")}"` : ""}. Gradient or image background. Real copy.`} ${q.animations !== "none" ? "Entrance animations." : ""}${q.tagline ? ` Use tagline: "${q.tagline}".` : ""}` :
+      section === "CategoryGrid" ? `4-6 category cards in a responsive grid. Each: icon/emoji, category name, item count. Hover lift effect.${q.industry ? ` Categories relevant to ${q.industry} industry.` : ""}` :
       section === "FeaturedProducts" ? `4-column responsive grid of product cards. Each card: gradient placeholder image, product name, price (bold), star rating row, "Add to Cart" button. Real product names from: ${q.description}.` :
       section === "PromoBanner" ? `Full-width colored strip. Bold headline, discount offer, CTA button. High-contrast colors.` :
-      section === "BenefitsRow" ? `Row of 4 benefit items: Free Shipping, Easy Returns, Secure Payment, 24/7 Support. Each: lucide icon + title + short description.` :
+      section === "BenefitsRow" ? `Row of 4 benefit items: Free Shipping, Easy Returns, Secure Payment, 24/7 Support. Each: icon + title + short description.` :
       section === "NewsletterSection" ? `Email signup. Headline, subheadline, email input + submit button in a row. Success state shows confirmation message.` :
-      section === "FeaturesGrid" ? `3-column grid (1 col mobile) of feature cards. 6 features with lucide icon in colored box, title, description. Relevant to: ${q.description}.` :
-      section === "TestimonialsSection" ? `3 testimonial cards in a grid. Each: star rating, quote, avatar placeholder circle, name, role/company. Real-sounding names and quotes.` :
+      section === "FeaturesGrid" ? `3-column grid (1 col mobile) of feature cards. 6 features with icon in colored box, title, description. Relevant to: ${q.description}.${q.industry ? ` Industry: ${q.industry}.` : ""}` :
+      section === "TestimonialsSection" ? `3 testimonial cards in a grid. Each: star rating, quote, avatar placeholder circle, name, role/company. Real-sounding names and quotes${q.industry ? ` from ${q.industry} industry` : ""}.` :
       section === "PricingSection" ? `3 pricing plan cards. Middle plan highlighted with primary color border + "Most popular" badge. Features checklist. CTA button.` :
-      section === "CTASection" ? `Full-width section with large headline, subheadline, primary CTA button. Contrasting background color.` :
+      section === "CTASection" ? `Full-width section with large headline, subheadline, primary CTA button${q.cta_goal ? ` ("${q.cta_goal.replace(/_/g, " ")}")` : ""}. Contrasting background color.` :
       section === "FAQSection" ? `Accordion FAQ. 6 questions and answers relevant to ${q.description}. Click to expand/collapse.` :
       section === "FeaturedPosts" ? `Grid of 3 blog post preview cards. Each: cover image placeholder, category badge, title, excerpt, author + date.` :
       section === "CategoriesRow" ? `Horizontal scrollable row of category pills/cards with icons.` :
@@ -466,12 +590,27 @@ export function getHomeSectionsPrompt(q: ProjectQuestionnaire): string {
       section === "CategoriesGrid" ? `Grid of category cards with icon and count.` :
       `Section for ${section} relevant to ${q.description}.`;
 
-    files.push(`"src/components/home/${section}.${t}":
+    files.push(`"${compDir}/${section}.${compExt}":
   - ${sectionDesc}
   - Fully styled with ${q.styling} using ${q.design_style} design and ${q.color_scheme} color scheme
   - Production quality — polished, not a template placeholder
-  - Uses lucide-react for icons, real copy relevant to: ${q.description}`);
+  ${q.content_tone ? `- Content tone: ${q.content_tone}` : ""}
+  ${q.target_audience ? `- Target audience: ${q.target_audience}` : ""}
+  - ${q.framework === "plain_html" ? "Self-contained HTML section with embedded styles" : q.framework === "astro" ? "Astro component (use client:load for interactive parts)" : q.framework === "vue" ? "Vue SFC with <template>, <script setup>, <style scoped>" : "Uses lucide-react for icons"}, real copy relevant to: ${q.description}`);
   });
+
+  const frameworkImportNote =
+    q.framework === "astro" ? `These files are imported by src/pages/index.astro using:\n${homeSections.map(s => `import ${s} from '../components/home/${s}.astro';`).join("\n")}` :
+    q.framework === "vue" ? `These files are imported by pages/index.vue using:\n${homeSections.map(s => `import ${s} from '~/components/home/${s}.vue';`).join("\n")}` :
+    q.framework === "remix" ? `These files are imported by app/routes/_index.tsx using:\n${homeSections.map(s => `import ${s} from '~/components/home/${s}';`).join("\n")}` :
+    q.framework === "plain_html" ? `These will be included in index.html via HTML partials or direct inclusion.` :
+    `These files are imported by src/app/page.tsx using:\n${homeSections.map(s => `import ${s} from '@/components/home/${s}';`).join("\n")}`;
+
+  const frameworkComponentNote =
+    q.framework === "astro" ? `Each .astro component uses Astro component syntax. For interactive parts (toggles, forms), use a framework island with client:load.` :
+    q.framework === "vue" ? `Each .vue component uses <script setup lang="ts"> with Composition API. Export nothing — Vue SFCs are auto-imported.` :
+    q.framework === "plain_html" ? `Each file is a standalone HTML snippet (<section>...</section>) with inline styles or class references.` :
+    `Each component MUST use "export default function ComponentName()" so the imports work.`;
 
   return `Generate home page section components as a JSON object. Keys = FULL file paths from project root. Values = complete file contents.
 
@@ -480,14 +619,13 @@ ${stackSummary(q)}
 Files to generate:
 ${files.map(f => `- ${f}`).join("\n\n")}
 
-IMPORTANT: These files are imported by src/app/page.tsx which uses:
-${homeSections.map(s => `import ${s} from '@/components/home/${s}';`).join("\n")}
+IMPORTANT: ${frameworkImportNote}
 
-Each component MUST use "export default function ${"{ComponentName}"}()" so the imports above work.
+${frameworkComponentNote}
 Every file must be 100% complete — no truncation, no placeholders, no "..." or "// TODO".
 Use ${q.styling === "tailwind" ? "Tailwind CSS classes" : q.styling} for styling.
-Client components using hooks/event handlers MUST have "use client"; as line 1.
-Never @apply a custom class — only built-in Tailwind utilities.
+${q.framework === "nextjs" || q.framework === "remix" ? 'Client components using hooks/event handlers MUST have "use client"; as line 1.' : ""}
+${q.styling === "tailwind" ? "Never @apply a custom class — only built-in Tailwind utilities." : ""}
 
 ${jsonInstruction()}`;
 }
@@ -495,38 +633,103 @@ ${jsonInstruction()}`;
 // ─── Step 5a-iii: Auth pages + middleware (separate call) ─────────────────────
 
 export function getAuthPagesPrompt(q: ProjectQuestionnaire): string {
-  if (q.framework !== "nextjs") return "";
   if (q.auth === "none") return "";
 
   const t = tsx(q);
   const e = ext(q);
   const files: string[] = [];
 
-  files.push(`"src/app/(auth)/login/page.${t}":
+  if (q.framework === "nextjs") {
+    files.push(`"src/app/(auth)/login/page.${t}":
   - Sign-in form with email + password fields
   - Form submission calls ${q.auth} sign-in
   - Link to signup page
   - Error display on invalid credentials
   - Styled consistently with ${q.design_style} design`);
 
-  files.push(`"src/app/(auth)/signup/page.${t}":
+    files.push(`"src/app/(auth)/signup/page.${t}":
   - Registration form with name, email, password fields
   - Form submission calls ${q.auth} sign-up
   - Link to login page
   - Styled consistently with ${q.design_style} design`);
 
-  if (q.auth === "supabase_auth" || q.auth === "nextauth" || q.auth === "clerk") {
-    files.push(`"src/middleware.${e}":
+    if (q.auth === "supabase_auth" || q.auth === "nextauth" || q.auth === "clerk") {
+      files.push(`"src/middleware.${e}":
   - Protect routes: /dashboard/*, /account/*, /admin/*
   - Redirect unauthenticated users to /login
   - Use ${q.auth === "clerk" ? "clerkMiddleware from @clerk/nextjs/server" : q.auth === "nextauth" ? "withAuth from next-auth/middleware" : "createServerClient from @supabase/ssr to check session"}`);
-  }
+    }
 
-  if (q.auth === "supabase_auth") {
-    files.push(`"src/app/auth/callback/route.${e}":
+    if (q.auth === "supabase_auth") {
+      files.push(`"src/app/auth/callback/route.${e}":
   - Exchange Supabase auth code for session
   - Redirect to /dashboard on success`);
+    }
+  } else if (q.framework === "astro") {
+    files.push(`"src/pages/login.astro":
+  - Sign-in page with email + password form
+  - Form posts to /api/auth/login
+  - Link to signup page
+  - Error display
+  - Styled with ${q.design_style} design`);
+
+    files.push(`"src/pages/signup.astro":
+  - Registration page with name, email, password form
+  - Form posts to /api/auth/register
+  - Link to login page
+  - Styled with ${q.design_style} design`);
+
+    files.push(`"src/pages/api/auth/login.${e}":
+  - POST handler: validate credentials, create session, redirect to /dashboard`);
+
+    files.push(`"src/pages/api/auth/register.${e}":
+  - POST handler: create user, create session, redirect to /dashboard`);
+  } else if (q.framework === "remix") {
+    files.push(`"app/routes/login.${t}":
+  - Login page using Remix action/loader pattern
+  - action(): validate credentials, create session cookie, redirect
+  - loader(): redirect if already logged in
+  - Form with email + password
+  - Styled with ${q.design_style} design`);
+
+    files.push(`"app/routes/signup.${t}":
+  - Signup page using Remix action/loader
+  - action(): create user, session, redirect
+  - Form with name, email, password
+  - Styled with ${q.design_style} design`);
+
+    files.push(`"app/services/auth.server.${e}":
+  - Server-side auth utilities: createUserSession, getUserSession, requireUser, logout`);
+  } else if (q.framework === "vue") {
+    files.push(`"pages/login.vue":
+  - Login page with Vue Composition API
+  - Email + password form with v-model bindings
+  - Submit handler calls auth composable
+  - Styled with ${q.design_style} design`);
+
+    files.push(`"pages/signup.vue":
+  - Signup page with name, email, password
+  - v-model bindings and validation
+  - Styled with ${q.design_style} design`);
+
+    files.push(`"middleware/auth.${e}":
+  - Nuxt route middleware: check auth state, redirect to /login if not authenticated`);
+
+    files.push(`"composables/useAuth.${e}":
+  - Auth composable: login(), signup(), logout(), user ref, isAuthenticated computed`);
+  } else if (q.framework === "plain_html") {
+    files.push(`"login.html":
+  - Login page with email + password form
+  - JavaScript handles form submission via fetch to /api/auth/login
+  - Styled with ${q.design_style} design`);
+
+    files.push(`"signup.html":
+  - Signup page with name, email, password form
+  - JavaScript form handler
+  - Styled with ${q.design_style} design`);
   }
+
+  if (files.length === 0) return "";
 
   return `Generate authentication pages and middleware as a JSON object. Keys = FULL file paths from project root. Values = complete file contents.
 
@@ -536,7 +739,7 @@ Files to generate:
 ${files.map(f => `- ${f}`).join("\n\n")}
 
 Every file must be 100% complete and functional.
-Client components using hooks/event handlers MUST have "use client"; as line 1.
+${q.framework === "nextjs" || q.framework === "remix" ? 'Client components using hooks/event handlers MUST have "use client"; as line 1.' : ""}
 Use ${q.styling === "tailwind" ? "Tailwind CSS classes" : q.styling} for styling.
 
 ${jsonInstruction()}`;
@@ -556,9 +759,18 @@ export function getLibFilesPrompt(q: ProjectQuestionnaire): string {
   - truncate(text: string, maxLength: number): string`);
 
   if (q.database === "supabase") {
+    const libDir = q.framework === "vue" ? "server/utils" :
+                   q.framework === "remix" ? "app/lib/supabase" :
+                   q.framework === "astro" ? "src/lib/supabase" :
+                   "src/lib/supabase";
+    const serverNote = q.framework === "nextjs" ? "with Next.js cookies()" :
+                       q.framework === "remix" ? "with request cookies" :
+                       q.framework === "astro" ? "with Astro.cookies" :
+                       q.framework === "vue" ? "with H3 event cookies" :
+                       "";
     files.push(
-      `"src/lib/supabase/client.${e}" — createBrowserClient from @supabase/ssr. Export createClient() for browser.`,
-      `"src/lib/supabase/server.${e}" — createServerClient from @supabase/ssr with Next.js cookies(). Export async createClient().`
+      `"${libDir}/client.${e}" — createBrowserClient from @supabase/ssr. Export createClient() for browser.`,
+      `"${libDir}/server.${e}" — createServerClient from @supabase/ssr ${serverNote}. Export async createClient().`
     );
   }
 
@@ -614,71 +826,66 @@ ${jsonInstruction()}`;
 
 // ─── Step 5c: Feature pages ───────────────────────────────────────────────────
 
+function featurePagePath(q: ProjectQuestionnaire, pagePath: string): string {
+  const t = tsx(q);
+  if (q.framework === "astro") return `src/pages/${pagePath || "index"}.astro`;
+  if (q.framework === "remix") return `app/routes/${pagePath ? pagePath.replace(/\//g, ".").replace(/\[(\w+)\]/g, "\\$$1") : "_index"}.${t}`;
+  if (q.framework === "vue") return `pages/${pagePath || "index"}.vue`;
+  if (q.framework === "plain_html") return `${pagePath || "index"}.html`;
+  return `src/app/${pagePath || ""}/page.${t}`;
+}
+
 export function getFeaturePagesPrompt(q: ProjectQuestionnaire): string {
   const t = tsx(q);
   const files: string[] = [];
 
-  if (q.framework !== "nextjs") return "";
+  // Helper to produce framework-appropriate page paths
+  const pg = (route: string, desc: string) => {
+    const path = featurePagePath(q, route);
+    files.push(`"${path}" — ${desc}`);
+  };
 
   if (q.project_type === "saas" || q.project_type === "dashboard") {
-    files.push(
-      `"src/app/dashboard/layout.${t}" — Dashboard layout. Renders <Sidebar /> on left, <main> on right. Fetches current user from ${q.database === "supabase" ? "Supabase" : "database"}. Redirects to /login if not authenticated.`,
-      `"src/app/dashboard/page.${t}" — Main dashboard. Shows welcome message, stats grid (4 StatsCards), recent activity table. Real data fetched from DB.`,
-      `"src/app/account/page.${t}" — User account/profile settings page. Form to update name, email, avatar.`,
-    );
+    if (q.framework === "nextjs") {
+      files.push(`"src/app/dashboard/layout.${t}" — Dashboard layout. Renders <Sidebar /> on left, <main> on right. Fetches current user from ${q.database === "supabase" ? "Supabase" : "database"}. Redirects to /login if not authenticated.`);
+    }
+    pg("dashboard", `Main dashboard. Shows welcome message, stats grid (4 StatsCards), recent activity table. Real data fetched from ${q.database !== "none" ? q.database : "mock data"}.`);
+    pg("account", "User account/profile settings page. Form to update name, email, avatar.");
     if (q.payments !== "none") {
-      files.push(`"src/app/pricing/page.${t}" — Pricing page with 3 plan cards. Each has a "Subscribe" button that hits the checkout API.`);
+      pg("pricing", "Pricing page with 3 plan cards. Each has a \"Subscribe\" button that hits the checkout API.");
     }
   } else if (q.project_type === "ecommerce" || q.project_type === "marketplace") {
-    files.push(
-      `"src/app/products/page.${t}" — Products listing page. Layout: left filter sidebar (sticky, 260px) + right product grid. Sidebar: category checkboxes, price range slider, rating filter, "Clear filters" button. Top bar: result count + sort dropdown (Featured, Price low-high, Price high-low, Newest). Grid: responsive 2-4 columns of ProductCard. Skeleton loading state. Empty state with illustration. Breadcrumb at top.`,
-      `"src/app/products/[slug]/page.${t}" — Product detail page. Layout: left column image gallery (main image + 4 thumbnail row), right column product info. Info column: breadcrumb, name (h1), star rating + review count, price (large, bold) with original crossed-out if on sale, color/size variant selector (button group), quantity stepper, "Add to Cart" (full width, primary) + "Save to Wishlist" buttons, shipping badge ("Free delivery"), accordion for Description / Specifications / Reviews.`,
-      `"src/app/cart/page.${t}" — Shopping cart page. Two-column layout: left = cart items list (CartItem components), right = sticky OrderSummary sidebar. CartItem: product thumbnail, name, variant, unit price, quantity +/- stepper, remove button. OrderSummary: subtotal, shipping (free over threshold), taxes, bold total, Checkout button, PayPal/Apple Pay logos, security badges (SSL lock icon). Empty cart state with illustration and "Continue Shopping" link.`,
-    );
+    pg("products", `Products listing page. Layout: left filter sidebar (sticky, 260px) + right product grid. Sidebar: category checkboxes, price range slider, rating filter, "Clear filters" button. Top bar: result count + sort dropdown. Grid: responsive 2-4 columns of ProductCard. Skeleton loading state. Breadcrumb at top.`);
+    pg("products/[slug]", `Product detail page. Layout: left column image gallery (main image + 4 thumbnail row), right column product info. Price (large, bold), variant selector, quantity stepper, "Add to Cart" button, shipping badge, accordion for Description/Specifications/Reviews.`);
+    pg("cart", `Shopping cart page. Two-column layout: left = cart items list, right = sticky order summary. Quantity steppers, remove buttons. Subtotal, shipping, taxes, total, Checkout button.`);
   } else if (q.project_type === "blog") {
-    files.push(
-      `"src/app/blog/page.${t}" — Blog index. Fetches posts. Renders grid of <PostCard> components. Includes category filter.`,
-      `"src/app/blog/[slug]/page.${t}" — Post detail. Renders <PostHeader>, post body content, author bio, related posts.`,
-    );
+    pg("blog", "Blog index. Fetches posts. Renders grid of PostCard components. Includes category filter.");
+    pg("blog/[slug]", "Post detail. Renders post header, body content, author bio, related posts.");
   } else if (q.project_type === "photography") {
-    files.push(
-      `"src/app/gallery/page.${t}" — Gallery index. Shows all albums as cards with cover photo, title, photo count.`,
-      `"src/app/gallery/[album]/page.${t}" — Album detail. Renders <GalleryGrid> with all photos. Clicking a photo opens <Lightbox>.`,
-    );
+    pg("gallery", "Gallery index. Shows all albums as cards with cover photo, title, photo count.");
+    pg("gallery/[album]", "Album detail. Renders GalleryGrid with all photos. Clicking a photo opens Lightbox.");
   } else if (q.project_type === "portfolio") {
-    files.push(
-      `"src/app/work/page.${t}" — Portfolio projects listing. Grid of <ProjectCard> components.`,
-      `"src/app/work/[slug]/page.${t}" — Case study detail with cover image, description, tech stack, live link.`,
-      `"src/app/about/page.${t}" — About page with bio, skills, experience timeline, contact CTA.`,
-    );
+    pg("work", "Portfolio projects listing. Grid of ProjectCard components.");
+    pg("work/[slug]", "Case study detail with cover image, description, tech stack, live link.");
+    pg("about", "About page with bio, skills, experience timeline, contact CTA.");
   } else if (q.project_type === "social" || q.project_type === "forum") {
-    files.push(
-      `"src/app/feed/page.${t}" — Main feed with posts/threads list.`,
-      `"src/app/feed/[id]/page.${t}" — Single post/thread detail with comments.`,
-      `"src/app/profile/[username]/page.${t}" — User profile page.`,
-    );
+    pg("feed", "Main feed with posts/threads list.");
+    pg("feed/[id]", "Single post/thread detail with comments.");
+    pg("profile/[username]", "User profile page.");
   } else if (q.project_type === "booking") {
-    files.push(
-      `"src/app/services/page.${t}" — Services/offerings listing page.`,
-      `"src/app/booking/page.${t}" — Booking form with date picker, time slots, service selection.`,
-      `"src/app/dashboard/page.${t}" — Provider dashboard showing upcoming bookings.`,
-    );
+    pg("services", "Services/offerings listing page.");
+    pg("booking", "Booking form with date picker, time slots, service selection.");
+    pg("dashboard", "Provider dashboard showing upcoming bookings.");
   } else if (q.project_type === "directory") {
-    files.push(
-      `"src/app/listings/page.${t}" — Directory listings with search and filter.`,
-      `"src/app/listings/[slug]/page.${t}" — Individual listing detail page.`,
-      `"src/app/submit/page.${t}" — Form to submit a new listing.`,
-    );
+    pg("listings", "Directory listings with search and filter.");
+    pg("listings/[slug]", "Individual listing detail page.");
+    pg("submit", "Form to submit a new listing.");
   } else if (q.project_type === "game") {
-    files.push(
-      `"src/app/game/page.${t}" — Game page. Renders the Phaser.js game canvas in a client component. Loads the game config.`,
-      `"src/game/config.${ext(q)}" — Phaser game config object: type AUTO, parent 'game', scene list.`,
-      `"src/game/scenes/MainScene.${ext(q)}" — Main Phaser scene class extending Phaser.Scene. Implements preload(), create(), update(). Full working game logic.`,
-    );
+    pg("game", "Game page. Renders the Phaser.js game canvas. Loads the game config.");
+    files.push(`"src/game/config.${ext(q)}" — Phaser game config object: type AUTO, parent 'game', scene list.`);
+    files.push(`"src/game/scenes/MainScene.${ext(q)}" — Main Phaser scene class extending Phaser.Scene. Implements preload(), create(), update(). Full working game logic.`);
   } else if (q.project_type === "landing") {
-    files.push(
-      `"src/app/page.${t}" — Enhanced landing page. Hero section, features grid, testimonials section (3 testimonials), pricing preview, FAQ accordion, newsletter signup, footer. All with real copy about: ${q.description}`,
-    );
+    pg("", `Enhanced landing page. Hero section, features grid, testimonials (3), pricing preview, FAQ accordion, newsletter signup. All with real copy about: ${q.description}`);
   }
 
   // API backend
@@ -692,6 +899,31 @@ export function getFeaturePagesPrompt(q: ProjectQuestionnaire): string {
 
   if (files.length === 0) return "";
 
+  const frameworkNotes =
+    q.framework === "astro" ? `
+- Use .astro file format for pages. Use Astro components or framework integrations (React/Svelte/Vue islands) for interactive parts.
+- Use Astro's content collections or fetch() for data loading in frontmatter.
+- Interactive islands must use client:load or client:visible directive.` :
+    q.framework === "remix" ? `
+- Use Remix loader/action pattern. Export loader() for data fetching, action() for mutations.
+- Use useLoaderData() hook in component.
+- Use Remix <Form> for form submissions.
+- File naming uses dot notation: routes/blog._index.tsx for /blog, routes/blog.$slug.tsx for /blog/:slug.` :
+    q.framework === "vue" ? `
+- Use Vue 3 Composition API with <script setup lang="ts">.
+- Nuxt auto-imports composables (useRoute, useFetch, useState, etc.) — no explicit imports needed.
+- Use <NuxtLink> for navigation. Use definePageMeta() for middleware/layout.
+- File naming: pages/blog/index.vue for /blog, pages/blog/[slug].vue for /blog/:slug.` :
+    q.framework === "plain_html" ? `
+- Use semantic HTML5 with proper <header>, <main>, <section>, <footer> structure.
+- Include inline <style> or link to a CSS file for styling.
+- Use vanilla JavaScript in <script> tags for interactivity.
+- Each HTML file is self-contained and works independently.` :
+    `
+- Use Next.js App Router conventions. Export default async function for server components.
+- Use @/ path alias for all imports.
+- Client components using hooks/event handlers MUST start with "use client"; on line 1.`;
+
   return `Generate feature/page files as a JSON object. Keys = FULL file paths from project root. Values = complete file contents.
 
 ${stackSummary(q)}
@@ -702,12 +934,12 @@ ${files.map(f => `- ${f}`).join("\n\n")}
 Requirements:
 - Every file complete — no truncation, no placeholders
 - Pages should fetch real data from ${q.database !== "none" ? q.database : "local state or mock data"}
-- Use @/ path alias for all imports
 - Apply ${q.design_style} design style and ${q.color_scheme} color scheme consistently
-- page.tsx files import components from @/components/ — never define reusable UI inline in a page file
-- Each logical section of a page (hero, product grid, filters, cart summary) must be its own component file
-- Client components using hooks or event handlers MUST start with "use client"; on line 1
-- NEVER @apply a custom class name — only built-in Tailwind utilities in @apply
+- Each logical section of a page (hero, product grid, filters, cart summary) should be its own component
+${q.content_tone ? `- Content tone: ${q.content_tone} — write all copy/text in this tone` : ""}
+${q.industry ? `- Industry: ${q.industry} — use industry-specific terminology, imagery references, and content` : ""}
+${frameworkNotes}
+- ${q.styling === "tailwind" ? "NEVER @apply a custom class name — only built-in Tailwind utilities" : `Use ${q.styling} for all styling`}
 
 ${jsonInstruction()}`;
 }
@@ -716,6 +948,18 @@ ${jsonInstruction()}`;
 
 export function getUIPrimitivesPrompt(q: ProjectQuestionnaire): string {
   const t = tsx(q);
+  const compExt = q.framework === "astro" ? "astro" : q.framework === "vue" ? "vue" : t;
+  const compDir = q.framework === "astro" ? "src/components/ui" :
+                  q.framework === "vue" ? "components/ui" :
+                  q.framework === "remix" ? "app/components/ui" :
+                  q.framework === "plain_html" ? "components/ui" :
+                  "src/components/ui";
+
+  const linkNote = q.framework === "nextjs" ? "Next.js <Link>" :
+                   q.framework === "remix" ? "Remix <Link> from @remix-run/react" :
+                   q.framework === "vue" ? "<NuxtLink>" :
+                   q.framework === "astro" ? "<a> tag" :
+                   "<a> tag";
 
   return `Generate UI primitive components as a JSON object.
 
@@ -723,34 +967,34 @@ ${stackSummary(q)}
 
 Generate these 5 files exactly:
 
-- "src/components/ui/Button.${t}":
+- "${compDir}/Button.${compExt}":
   Props: variant (primary|secondary|outline|ghost|destructive), size (sm|md|lg), loading (boolean), disabled, onClick, href, children, className
-  If href provided, render as <a> or Next.js <Link>
+  If href provided, render as ${linkNote}
   Loading state: spinner icon + disabled
-  Full TypeScript props interface
+  ${q.framework === "vue" ? "Vue SFC with <script setup>, <template>, defineProps" : q.framework === "astro" ? "Astro component with Props interface in frontmatter" : "Full TypeScript props interface"}
 
-- "src/components/ui/Card.${t}":
+- "${compDir}/Card.${compExt}":
   Sub-components: Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter
-  Each accepts className prop
-  Proper TypeScript interfaces
+  ${q.framework === "vue" ? "Each is a Vue SFC with <slot /> for children" : "Each accepts className prop"}
+  ${q.framework !== "vue" && q.framework !== "astro" ? "Proper TypeScript interfaces" : ""}
 
-- "src/components/ui/Input.${t}":
+- "${compDir}/Input.${compExt}":
   Props: label, error, helperText, type, placeholder, value, onChange, name, id, required, disabled, className
   Shows red border + error message when error prop set
-  Full TypeScript interface
+  ${q.framework === "vue" ? "Uses v-model for two-way binding, defineProps + defineEmits" : ""}
 
-- "src/components/ui/Badge.${t}":
+- "${compDir}/Badge.${compExt}":
   Props: variant (default|success|warning|danger|info|outline), size (sm|md), children, className
   Color variants actually implemented with ${q.styling === "tailwind" ? "Tailwind classes" : "CSS"}
 
-- "src/components/ui/Modal.${t}":
+- "${compDir}/Modal.${compExt}":
   Props: open, onClose, title, children, size (sm|md|lg)
   Backdrop click closes modal
   Escape key closes modal
-  useEffect for keyboard listener
-  Portal or fixed positioning
+  ${q.framework === "vue" ? "Uses Teleport to render at body level, watch() for keyboard listener" : q.framework === "astro" ? "Use a React island with client:load for interactivity" : "useEffect for keyboard listener\n  Portal or fixed positioning"}
 
 All styled with ${q.styling === "tailwind" ? "Tailwind CSS" : q.styling}. Match the ${q.design_style} design style.
+${q.framework === "nextjs" || q.framework === "remix" ? 'Every component with useState/useEffect MUST start with "use client"; on line 1.' : ""}
 
 ${jsonInstruction()}`;
 }
@@ -759,6 +1003,18 @@ ${jsonInstruction()}`;
 
 export function getLayoutComponentsPrompt(q: ProjectQuestionnaire): string {
   const t = tsx(q);
+  const compExt = q.framework === "astro" ? "astro" : q.framework === "vue" ? "vue" : t;
+  const compDir = q.framework === "astro" ? "src/components/layout" :
+                  q.framework === "vue" ? "components/layout" :
+                  q.framework === "remix" ? "app/components/layout" :
+                  q.framework === "plain_html" ? "components/layout" :
+                  "src/components/layout";
+
+  const navLinks = q.nav_pages && q.nav_pages.length > 0
+    ? `Navigation links: ${q.nav_pages.join(", ")}`
+    : `Navigation links relevant to a ${q.project_type} site`;
+
+  const themeTogglePath = `${compDir.replace("/layout", "/ui")}/ThemeToggle.${compExt}`;
 
   return `Generate layout components as a JSON object.
 
@@ -766,30 +1022,31 @@ ${stackSummary(q)}
 
 Generate these files:
 
-- "src/components/layout/Navbar.${t}":
+- "${compDir}/Navbar.${compExt}":
   - Logo/brand name "${q.project_name}" on the left
-  - Navigation links relevant to a ${q.project_type} site
+  - ${navLinks}
   ${q.auth !== "none" ? `- Auth state: if logged in show user avatar + dropdown (profile, settings, sign out); if logged out show Login + Sign Up buttons` : "- CTA button on right"}
-  ${q.auth === "supabase_auth" ? `- CRITICAL: Use createBrowserClient from '@supabase/ssr' to get session. NEVER import from '@supabase/auth-helpers-nextjs' — that package is deprecated and not installed.` : ""}
-  ${q.color_scheme === "system_toggle" ? `- Import ThemeToggle from '@/components/ui/ThemeToggle' and render it in the navbar` : `- CRITICAL: do NOT import or use ThemeToggle — this project does not have a dark/light toggle`}
+  ${q.auth === "supabase_auth" && q.framework === "nextjs" ? `- CRITICAL: Use createBrowserClient from '@supabase/ssr' to get session. NEVER import from '@supabase/auth-helpers-nextjs' — that package is deprecated.` : ""}
+  ${q.color_scheme === "system_toggle" ? `- Include a theme toggle button (sun/moon icons)` : ""}
   - Mobile hamburger menu that opens a drawer/sheet
   - Sticky on scroll
+  ${q.framework === "vue" ? "- Vue SFC with <script setup>, use NuxtLink for nav links" : ""}
+  ${q.framework === "astro" ? "- Astro component; use a React/Svelte island for mobile menu toggle" : ""}
 
-- "src/components/layout/Footer.${t}":
-  - Logo + tagline
+- "${compDir}/Footer.${compExt}":
+  - Logo + ${q.tagline ? `tagline: "${q.tagline}"` : "tagline"}
   - 3-4 column links grid (Product, Company, Legal, Social)
   - Copyright line with current year
   - Social media icons (GitHub, Twitter/X, LinkedIn)
 
-${q.color_scheme === "system_toggle" ? `- "src/components/ui/ThemeToggle.${t}":
+${q.color_scheme === "system_toggle" ? `- "${themeTogglePath}":
   - Button that toggles between dark and light mode
-  - Sun/Moon icons (use lucide-react)
+  - Sun/Moon icons${q.framework === "nextjs" || q.framework === "remix" ? " (use lucide-react)" : ""}
   - Reads/writes to localStorage and applies class to document.documentElement` : ""}
 
 Styled with ${q.styling === "tailwind" ? "Tailwind CSS" : q.styling}. Match ${q.design_style} design style and ${q.color_scheme} color scheme.
-
-CRITICAL: Every component with useState/useEffect/useRouter MUST start with "use client"; on line 1.
-CRITICAL: Only @apply built-in Tailwind utilities. Never @apply a class you defined in @layer components.
+${q.framework === "nextjs" || q.framework === "remix" ? '\nCRITICAL: Every component with useState/useEffect/useRouter MUST start with "use client"; on line 1.' : ""}
+${q.styling === "tailwind" ? "CRITICAL: Only @apply built-in Tailwind utilities. Never @apply a class you defined in @layer components." : ""}
 
 ${jsonInstruction()}`;
 }
@@ -885,6 +1142,22 @@ export function getFeatureComponentsPrompt(q: ProjectQuestionnaire): string {
     files.push(`"src/types/index.${e}" — TypeScript interfaces for all data models used in this ${q.project_type} application.`);
   }
 
+  const frameworkCompNotes =
+    q.framework === "astro" ? `- Use .astro component syntax (or React islands with client:load for interactive components)
+- Import paths are relative (../components/...) not aliases
+- For images use <img> with src prop (not next/image)` :
+    q.framework === "vue" ? `- Use Vue SFC format: <script setup lang="ts">, <template>, <style scoped>
+- defineProps<>() for type-safe props
+- For images use <img> or <NuxtImg> — not next/image` :
+    q.framework === "remix" ? `- React components, import from ~/components/ path alias
+- Every component using useState/useEffect MUST have "use client"; as line 1
+- For images use <img> — not next/image` :
+    q.framework === "plain_html" ? `- Standard HTML/CSS/JS components
+- For images use <img> with src attribute` :
+    `- Import from @/ path alias
+- Every component using useState/useEffect/useRouter/event handlers MUST have "use client"; as line 1
+- For images use next/image <Image> component`;
+
   return `Generate feature-specific components as a JSON object.
 
 ${stackSummary(q)}
@@ -895,82 +1168,100 @@ ${files.map(f => `- ${f}`).join("\n\n")}
 Requirements:
 - Every component complete — no truncation, no placeholders
 - ${q.styling === "tailwind" ? "Tailwind CSS classes for all styling" : q.styling + " for all styling"}
-- Proper TypeScript props interfaces with JSDoc if helpful
-- Import from @/ path alias
-- Every component using useState/useEffect/useRouter/event handlers MUST have "use client"; as line 1
-- NEVER @apply a custom class — only built-in Tailwind utilities in @apply statements
+- Proper TypeScript props interfaces
+${frameworkCompNotes}
+- ${q.styling === "tailwind" ? "NEVER @apply a custom class — only built-in Tailwind utilities" : ""}
 
 ${jsonInstruction()}`;
 }
 
 // ─── Step 7: API routes ───────────────────────────────────────────────────────
 
+function apiRoutePath(q: ProjectQuestionnaire, route: string): string {
+  const e = ext(q);
+  if (q.framework === "astro") return `src/pages/api/${route}.${e}`;
+  if (q.framework === "remix") return `app/routes/api.${route.replace(/\//g, ".")}.${ext(q)}`;
+  if (q.framework === "vue") return `server/api/${route}.${e}`;
+  // Next.js / plain_html
+  return `src/app/api/${route}/route.${e}`;
+}
+
 export function getApiRoutesPrompt(q: ProjectQuestionnaire): string {
   const e = ext(q);
+
+  // plain_html doesn't have server-side API capability
+  if (q.framework === "plain_html") return "";
 
   const files: string[] = [];
 
   if (q.database === "supabase" && q.auth !== "none") {
-    files.push(`"src/app/api/auth/callback/route.${e}" — Supabase OAuth callback. Exchange code for session using @supabase/ssr. Redirect to /dashboard on success.`);
+    files.push(`"${apiRoutePath(q, "auth/callback")}" — Supabase OAuth callback. Exchange code for session. Redirect to /dashboard on success.`);
   }
 
-  if (q.auth === "nextauth") {
+  if (q.auth === "nextauth" && q.framework === "nextjs") {
     files.push(`"src/app/api/auth/[...nextauth]/route.${e}" — NextAuth handlers. Export { GET, POST } = handlers from @/lib/auth.`);
   }
 
   if (q.payments === "stripe") {
     files.push(
-      `"src/app/api/stripe/checkout/route.${e}" — Create Stripe Checkout Session. Accept {priceId, successUrl, cancelUrl} in body. Return {url}.`,
-      `"src/app/api/stripe/webhook/route.${e}" — Handle Stripe webhooks. Verify signature with stripe.webhooks.constructEvent. Handle checkout.session.completed: update user subscription. Handle customer.subscription.deleted.`,
-      `"src/app/api/stripe/portal/route.${e}" — Create Customer Portal session. Return {url}. For subscription management.`,
+      `"${apiRoutePath(q, "stripe/checkout")}" — Create Stripe Checkout Session. Accept {priceId, successUrl, cancelUrl} in body. Return {url}.`,
+      `"${apiRoutePath(q, "stripe/webhook")}" — Handle Stripe webhooks. Verify signature with stripe.webhooks.constructEvent. Handle checkout.session.completed: update user subscription.`,
+      `"${apiRoutePath(q, "stripe/portal")}" — Create Customer Portal session. Return {url}. For subscription management.`,
     );
   }
 
   if (q.payments === "lemonsqueezy") {
-    files.push(`"src/app/api/lemonsqueezy/webhook/route.${e}" — Lemon Squeezy webhook handler. Verify signature. Handle order_created, subscription_created, subscription_cancelled events.`);
+    files.push(`"${apiRoutePath(q, "lemonsqueezy/webhook")}" — Lemon Squeezy webhook handler. Verify signature. Handle order_created, subscription_created, subscription_cancelled events.`);
   }
 
   if (q.extra_apis?.includes("resend")) {
-    files.push(`"src/app/api/contact/route.${e}" — POST /api/contact. Validate name, email, message. Send email via Resend. Rate limit: 1 request per IP per minute. Return {success: true}.`);
+    files.push(`"${apiRoutePath(q, "contact")}" — POST /api/contact. Validate name, email, message. Send email via Resend. Return {success: true}.`);
   }
 
   if (q.extra_apis?.includes("openai")) {
-    files.push(`"src/app/api/chat/route.${e}" — POST /api/chat. Accept {messages: [{role, content}]}. Stream response using OpenAI streaming with ReadableStream. Set headers for SSE.`);
+    files.push(`"${apiRoutePath(q, "chat")}" — POST /api/chat. Accept {messages: [{role, content}]}. Stream response using OpenAI streaming. Set headers for SSE.`);
   }
 
   if (q.extra_apis?.includes("anthropic")) {
-    files.push(`"src/app/api/chat/route.${e}" — POST /api/chat. Accept {messages: [{role, content}]}. Stream response using Anthropic streaming. Return SSE stream.`);
+    files.push(`"${apiRoutePath(q, "chat")}" — POST /api/chat. Accept {messages: [{role, content}]}. Stream response using Anthropic streaming. Return SSE stream.`);
   }
 
   if (q.features?.includes("file_upload") && q.extra_apis?.includes("cloudinary")) {
-    files.push(`"src/app/api/upload/route.${e}" — POST /api/upload. Accept multipart/form-data with file field. Upload to Cloudinary. Return {url, publicId}.`);
+    files.push(`"${apiRoutePath(q, "upload")}" — POST /api/upload. Accept multipart/form-data with file field. Upload to Cloudinary. Return {url, publicId}.`);
   }
 
   if (q.project_type === "ecommerce" || q.project_type === "marketplace") {
     files.push(
-      `"src/app/api/products/route.${e}" — GET: list products with pagination (?page, ?limit, ?category). POST: create product (admin only). Return {products, total, page}.`,
-      `"src/app/api/products/[id]/route.${e}" — GET single product. PUT update product. DELETE product. Auth checks.`,
-      `"src/app/api/orders/route.${e}" — GET user's orders. POST create order: validate cart, check stock, create order row, return order ID.`,
+      `"${apiRoutePath(q, "products")}" — GET: list products with pagination (?page, ?limit, ?category). POST: create product (admin only). Return {products, total, page}.`,
+      `"${apiRoutePath(q, "products/[id]")}" — GET single product. PUT update product. DELETE product. Auth checks.`,
+      `"${apiRoutePath(q, "orders")}" — GET user's orders. POST create order: validate cart, check stock, create order row, return order ID.`,
     );
   } else if (q.project_type === "blog") {
     files.push(
-      `"src/app/api/posts/route.${e}" — GET: list published posts (?page, ?category, ?search). POST: create post (authenticated).`,
-      `"src/app/api/posts/[slug]/route.${e}" — GET single post by slug, increment view count. PUT: update post. DELETE: delete post.`,
+      `"${apiRoutePath(q, "posts")}" — GET: list published posts (?page, ?category, ?search). POST: create post (authenticated).`,
+      `"${apiRoutePath(q, "posts/[slug]")}" — GET single post by slug, increment view count. PUT: update post. DELETE: delete post.`,
     );
   } else if (q.project_type === "saas" || q.project_type === "dashboard") {
     files.push(
-      `"src/app/api/user/route.${e}" — GET: return current user profile from DB. PATCH: update name, avatar. Return updated profile.`,
+      `"${apiRoutePath(q, "user")}" — GET: return current user profile from DB. PATCH: update name, avatar. Return updated profile.`,
     );
   } else if (q.project_type === "booking") {
     files.push(
-      `"src/app/api/bookings/route.${e}" — GET user's bookings. POST create booking: check availability, create record, send confirmation email if Resend configured.`,
-      `"src/app/api/slots/route.${e}" — GET available time slots. Accept ?date, ?serviceId. Return array of {time, available}.`,
+      `"${apiRoutePath(q, "bookings")}" — GET user's bookings. POST create booking: check availability, create record, send confirmation email if Resend configured.`,
+      `"${apiRoutePath(q, "slots")}" — GET available time slots. Accept ?date, ?serviceId. Return array of {time, available}.`,
     );
   }
 
   if (files.length === 0) {
-    files.push(`"src/app/api/health/route.${e}" — GET /api/health. Return {status: "ok", timestamp: new Date().toISOString(), version: "1.0.0"}.`);
+    files.push(`"${apiRoutePath(q, "health")}" — GET /api/health. Return {status: "ok", timestamp: new Date().toISOString(), version: "1.0.0"}.`);
   }
+
+  const frameworkApiNotes =
+    q.framework === "nextjs" ? `- Use Next.js App Router route handlers (export async function GET/POST/PUT/DELETE)\n- Return NextResponse.json() with correct HTTP status codes` :
+    q.framework === "astro" ? `- Use Astro API routes: export async function GET/POST({ request })\n- Return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json' } })` :
+    q.framework === "remix" ? `- Use Remix action/loader pattern: export async function action({ request })\n- Return json() from @remix-run/node for responses` :
+    q.framework === "vue" ? `- Use Nuxt server API: export default defineEventHandler(async (event) => {})\n- Use readBody(event) for request body, getQuery(event) for query params` :
+    `- Export route handler functions`;
 
   return `Generate API route files as a JSON object. Keys = FULL file paths from project root. Values = complete file contents.
 
@@ -980,8 +1271,7 @@ Files to generate:
 ${files.map(f => `- ${f}`).join("\n\n")}
 
 Requirements:
-- Use Next.js App Router route handlers (export async function GET/POST/PUT/DELETE)
-- Return NextResponse.json() with correct HTTP status codes
+${frameworkApiNotes}
 - Validate all inputs
 - Include proper error handling: try/catch, meaningful error messages
 - Use TypeScript types for request/response bodies
@@ -1108,14 +1398,48 @@ Brief 2-3 sentence overview from: ${q.description}
 
 \`\`\`
 ${pkgName}/
-├── src/
+${q.framework === "astro" ? `├── src/
+│   ├── pages/        # Astro page routes
+│   ├── layouts/      # Layout templates
+│   ├── components/   # Astro & React components
+│   │   ├── ui/       # Primitives (Button, Card, Input...)
+│   │   ├── layout/   # Navbar, Footer
+│   │   └── home/     # Homepage sections
+│   ├── lib/          # Utilities and service clients
+│   └── styles/       # Global CSS
+├── public/           # Static assets` :
+  q.framework === "remix" ? `├── app/
+│   ├── routes/       # Remix route modules
+│   ├── components/   # React components
+│   │   ├── ui/       # Primitives (Button, Card, Input...)
+│   │   ├── layout/   # Navbar, Footer
+│   │   └── home/     # Homepage sections
+│   ├── services/     # Server-side utilities
+│   └── styles/       # CSS files
+├── public/           # Static assets` :
+  q.framework === "vue" ? `├── pages/            # Nuxt page routes (auto-routing)
+├── components/       # Vue components (auto-imported)
+│   ├── ui/           # Primitives (Button, Card, Input...)
+│   ├── layout/       # Navbar, Footer
+│   └── home/         # Homepage sections
+├── composables/      # Vue composables (useAuth, etc.)
+├── layouts/          # Nuxt layouts
+├── server/           # Server API routes
+├── assets/           # CSS, images processed by bundler
+├── public/           # Static assets` :
+  q.framework === "plain_html" ? `├── index.html        # Homepage
+├── styles.css        # Stylesheet
+├── script.js         # JavaScript
+├── components/       # Reusable HTML partials
+├── public/           # Static assets (images, fonts)` :
+  `├── src/
 │   ├── app/          # Next.js App Router pages + API routes
 │   ├── components/   # React components
 │   │   ├── ui/       # Primitives (Button, Card, Input...)
 │   │   └── layout/   # Navbar, Footer
 │   ├── lib/          # Utilities and service clients
 │   └── types/        # TypeScript interfaces
-├── public/           # Static assets
+├── public/           # Static assets`}
 └── ...config files
 \`\`\`
 
@@ -1145,7 +1469,7 @@ ${q.database === "prisma_postgres" || q.database === "planetscale" ? "npx prisma
 npm run dev
 \`\`\`
 
-Open [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:${q.framework === "astro" ? "4321" : q.framework === "vue" ? "3000" : "3000"}](http://localhost:${q.framework === "astro" ? "4321" : "3000"})
 
 ## ⚙️ Environment Variables
 
@@ -1155,11 +1479,31 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ## 📦 Deployment
 
-### Vercel (Recommended)
+${q.framework === "astro" ? `### Vercel / Netlify / Cloudflare Pages
+1. Push to GitHub
+2. Import project on your hosting platform
+3. Build command: \`npm run build\`
+4. Output directory: \`dist\`
+5. Add environment variables in dashboard` :
+  q.framework === "remix" ? `### Vercel / Fly.io (Recommended)
+1. Push to GitHub
+2. Import project at vercel.com/new or deploy via Fly.io
+3. Add environment variables
+4. Deploy` :
+  q.framework === "vue" ? `### Vercel / Netlify (Recommended)
+1. Push to GitHub
+2. Import project — Nuxt is auto-detected
+3. Add environment variables in dashboard
+4. Deploy` :
+  q.framework === "plain_html" ? `### Any static hosting (Netlify, GitHub Pages, Cloudflare Pages)
+1. Push to GitHub
+2. Set build output to the root directory (or \`dist\` if using a build step)
+3. Deploy — no server needed` :
+  `### Vercel (Recommended)
 1. Push to GitHub
 2. Import project at vercel.com/new
 3. Add environment variables in Vercel dashboard
-4. Deploy
+4. Deploy`}
 ${q.payments === "stripe" ? "\n### Stripe Webhooks\nAfter deploying, set up Stripe webhook endpoint: \`https://yourdomain.com/api/stripe/webhook\`" : ""}
 
 ## 📝 License

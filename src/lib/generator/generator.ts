@@ -200,21 +200,105 @@ export default config;
     }
   }
 
-  // .gitignore — always the same
-  files.push(makeFile(".gitignore", [
-    "node_modules",
-    ".next",
-    "dist",
-    "build",
-    "out",
-    ".env",
-    ".env.local",
-    ".env*.local",
-    ".DS_Store",
-    "*.log",
-    ".vercel",
-    ".turbo",
-  ].join("\n")));
+  if (q.framework === "astro") {
+    // tsconfig for Astro
+    files.push(makeFile("tsconfig.json", JSON.stringify({
+      extends: "astro/tsconfigs/strict",
+      compilerOptions: {
+        strictNullChecks: true,
+      },
+    }, null, 2)));
+
+    // astro.config.mjs
+    const astroIntegrations: string[] = [];
+    const astroImports: string[] = [`import { defineConfig } from 'astro/config';`];
+    if (q.styling === "tailwind") {
+      astroImports.push(`import tailwind from '@astrojs/tailwind';`);
+      astroIntegrations.push("tailwind()");
+    }
+    if (q.language === "typescript") {
+      // React integration for interactive islands
+      astroImports.push(`import react from '@astrojs/react';`);
+      astroIntegrations.push("react()");
+    }
+    files.push(makeFile("astro.config.mjs", `${astroImports.join("\n")}
+
+export default defineConfig({${astroIntegrations.length > 0 ? `\n  integrations: [${astroIntegrations.join(", ")}],` : ""}
+});
+`));
+  }
+
+  if (q.framework === "remix") {
+    // tsconfig for Remix
+    files.push(makeFile("tsconfig.json", JSON.stringify({
+      compilerOptions: {
+        target: "ES2022",
+        lib: ["DOM", "DOM.Iterable", "ES2022"],
+        types: ["@remix-run/node", "vite/client"],
+        allowJs: true,
+        skipLibCheck: true,
+        strict: true,
+        noEmit: true,
+        esModuleInterop: true,
+        module: "ESNext",
+        moduleResolution: "Bundler",
+        resolveJsonModule: true,
+        isolatedModules: true,
+        jsx: "react-jsx",
+        paths: { "~/*": ["./app/*"] },
+      },
+      include: ["**/*.ts", "**/*.tsx", "env.d.ts"],
+      exclude: ["node_modules"],
+    }, null, 2)));
+
+    // vite.config.ts for Remix
+    files.push(makeFile("vite.config.ts", `import { vitePlugin as remix } from "@remix-run/dev";
+import { defineConfig } from "vite";
+import tsconfigPaths from "vite-tsconfig-paths";
+
+export default defineConfig({
+  plugins: [remix(), tsconfigPaths()],
+});
+`));
+  }
+
+  if (q.framework === "vue") {
+    // tsconfig for Nuxt 3
+    files.push(makeFile("tsconfig.json", JSON.stringify({
+      extends: "./.nuxt/tsconfig.json",
+    }, null, 2)));
+
+    // nuxt.config.ts
+    const nuxtModules: string[] = [];
+    if (q.styling === "tailwind") nuxtModules.push(`"@nuxtjs/tailwindcss"`);
+    files.push(makeFile("nuxt.config.ts", `export default defineNuxtConfig({
+  devtools: { enabled: true },${nuxtModules.length > 0 ? `\n  modules: [${nuxtModules.join(", ")}],` : ""}
+  compatibilityDate: "2024-11-01",
+});
+`));
+  }
+
+  if (q.framework === "plain_html") {
+    if (q.styling === "tailwind") {
+      // For plain HTML + Tailwind, use a simple build setup
+      files.push(makeFile("tailwind.config.js", `/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ["./**/*.html"],
+  theme: { extend: {} },
+  plugins: [],
+};
+`));
+    }
+  }
+
+  // .gitignore — framework-appropriate
+  const gitignoreLines = ["node_modules", ".env", ".env.local", ".env*.local", ".DS_Store", "*.log"];
+  if (q.framework === "nextjs") gitignoreLines.push(".next", "out", ".vercel", ".turbo");
+  if (q.framework === "astro") gitignoreLines.push("dist", ".astro");
+  if (q.framework === "remix") gitignoreLines.push("build", ".cache");
+  if (q.framework === "vue") gitignoreLines.push(".nuxt", ".output", "dist");
+  if (q.framework === "plain_html") gitignoreLines.push("dist", "build");
+  files.push(makeFile(".gitignore", gitignoreLines.join("\n")));
 
   // .prettierrc
   files.push(makeFile(".prettierrc", JSON.stringify({

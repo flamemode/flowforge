@@ -9,6 +9,26 @@ export type MobileFramework = "expo" | "flutter" | "swift" | "kotlin";
 export type MobileBackend = "supabase" | "firebase" | "rest_api" | "none";
 export type MobileFeature = "push_notifications" | "camera" | "maps" | "biometric_auth" | "offline_mode" | "in_app_purchases" | "social_login" | "dark_mode" | "analytics" | "deep_linking";
 
+export type Industry =
+  | "restaurant"
+  | "fitness"
+  | "law_firm"
+  | "real_estate"
+  | "agency"
+  | "medical"
+  | "tech"
+  | "retail"
+  | "education"
+  | "creative"
+  | "finance"
+  | "consulting"
+  | "nonprofit"
+  | "other";
+
+export type ContentTone = "professional" | "casual" | "luxury" | "playful" | "technical";
+
+export type CTAGoal = "book_call" | "sign_up" | "buy_now" | "download" | "contact_us" | "learn_more";
+
 export type CreditPackId = "starter" | "studio" | "agency";
 
 export interface CreditPack {
@@ -138,6 +158,13 @@ export interface ProjectQuestionnaire {
   mobile_features?: MobileFeature[];
   // Typography
   font_pairing?: FontPairing;
+  // Content & branding
+  industry?: Industry;
+  content_tone?: ContentTone;
+  tagline?: string;
+  cta_goal?: CTAGoal;
+  target_audience?: string;
+  nav_pages?: string[];
   // Dev environment
   dev_os?: DevOS;
   node_version?: NodeVersion;

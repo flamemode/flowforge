@@ -12,7 +12,7 @@ import {
   getMobileServicesPrompt,
   getMobileReadmePrompt,
 } from "./mobile-prompts";
-import type { GenerationEvent, OnEvent } from "./generator";
+import type { OnEvent } from "./generator";
 
 const SONNET = "claude-sonnet-4-6";
 const HAIKU = "claude-haiku-4-5-20251001";
@@ -62,10 +62,30 @@ function parseJsonResponse(raw: string): Record<string, string> {
   try {
     return JSON.parse(cleaned);
   } catch {
-    const lastComma = cleaned.lastIndexOf('",\n');
-    if (lastComma !== -1) {
-      const partial = cleaned.slice(0, lastComma) + '"}';
-      try { return JSON.parse(partial); } catch { /* fall through */ }
+    // Try to recover from truncated JSON
+    const patterns = ['",\n  "', '"\n}', '",\n"', '"\n'];
+    for (const pattern of patterns) {
+      let searchFrom = cleaned.length;
+      for (let i = 0; i < 5; i++) {
+        const pos = cleaned.lastIndexOf(pattern, searchFrom - 1);
+        if (pos === -1) break;
+        const candidate = cleaned.slice(0, pos + 1) + "\n}";
+        try {
+          const result = JSON.parse(candidate);
+          const keys = Object.keys(result);
+          if (keys.length > 0) {
+            const lastKey = keys[keys.length - 1];
+            const lastValue = result[lastKey];
+            if (lastValue && lastValue.length > 100 &&
+                !lastValue.trimEnd().match(/[;}\]>)`'"]\s*$/) &&
+                !lastValue.trimEnd().endsWith("*/")) {
+              delete result[lastKey];
+            }
+          }
+          return result;
+        } catch { /* try next position */ }
+        searchFrom = pos;
+      }
     }
     console.error("Failed to parse JSON response:", cleaned.slice(0, 200));
     return {};
