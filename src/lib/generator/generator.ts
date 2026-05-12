@@ -148,18 +148,29 @@ export async function generateProject(
     // Overwrite globals.css deterministically — Claude consistently reverts to Tailwind v3 syntax
     if (questionnaire.styling === "tailwind") {
       const isDark = questionnaire.color_scheme === "dark";
+      const isToggle = questionnaire.color_scheme === "system_toggle";
       const globalsCss = `@import "tailwindcss";
 
 :root {
   --background: ${isDark ? "0 0% 4%" : "0 0% 100%"};
   --foreground: ${isDark ? "0 0% 95%" : "0 0% 4%"};
-  --primary: 262 80% 60%;
+  --primary: 262 80% ${isDark ? "65%" : "60%"};
   --primary-foreground: 0 0% 100%;
   --muted: ${isDark ? "0 0% 15%" : "0 0% 94%"};
   --muted-foreground: ${isDark ? "0 0% 55%" : "0 0% 45%"};
   --border: ${isDark ? "0 0% 18%" : "0 0% 88%"};
   --radius: 0.5rem;
 }
+${isToggle ? `
+.dark {
+  --background: 0 0% 4%;
+  --foreground: 0 0% 95%;
+  --primary: 262 80% 65%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 0 0% 15%;
+  --muted-foreground: 0 0% 55%;
+  --border: 0 0% 18%;
+}` : ""}
 
 body {
   background-color: hsl(var(--background));
