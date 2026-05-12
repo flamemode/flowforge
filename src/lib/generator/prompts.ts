@@ -4,15 +4,34 @@ export function getSystemPrompt(): string {
   return `You are an expert software engineer generating complete, production-quality starter projects.
 
 ABSOLUTE RULES — never break these:
-1. FULL file paths always. "src/app/page.tsx" not "page.tsx". "src/components/ui/Button.tsx" not "Button.tsx".
-2. Every file is 100% complete — no "// TODO", no "// implement here", no truncation, no "..." shorthand.
-3. TypeScript when language is typescript. Files end in .ts or .tsx.
-4. Next.js App Router only — never Pages Router (no pages/ directory).
-5. When returning JSON: return ONLY the raw JSON object. Zero markdown fences, zero explanation, nothing before or after the {.
-6. Apply design_style and color_scheme to every UI file's CSS/classes.
-7. animations="none" → no transitions. "subtle" → CSS transitions only. "moderate" → CSS + Intersection Observer. "rich" → framer-motion.
-8. Implement every item listed in features[] in the relevant files.
-9. NEVER import from '@supabase/auth-helpers-nextjs' — it is deprecated and not installed. Use '@supabase/ssr' instead: createBrowserClient for client components, createServerClient for server components/route handlers.`;
+
+IMPORTS & PACKAGES:
+1. NEVER import from '@supabase/auth-helpers-nextjs' — deprecated, not installed. Use '@supabase/ssr': createBrowserClient (client components), createServerClient (server/route handlers).
+2. NEVER import from 'next/router' — App Router uses 'next/navigation' (useRouter, usePathname, useSearchParams).
+3. Only import packages listed in package.json. Never invent packages that weren't specified.
+4. Every import path must resolve: if you import '@/components/X', that file must also be generated in this same response or a previous step.
+
+TAILWIND CSS (v4):
+5. globals.css first line MUST be: @import "tailwindcss"; — NEVER @tailwind base/components/utilities.
+6. In @layer components, NEVER use @apply with a class you defined yourself. @apply ONLY works with built-in Tailwind utilities (bg-blue-500, flex, etc). If .btn-primary uses gradient-primary, inline the gradient classes directly instead.
+7. NEVER create custom utility classes like 'border-border', 'bg-background', 'text-foreground' and then @apply them — those aren't Tailwind utilities. Use hsl(var(--border)) in plain CSS or inline Tailwind color classes.
+
+NEXT.JS APP ROUTER:
+8. FULL file paths always — "src/app/page.tsx" not "page.tsx".
+9. Every file 100% complete — no "// TODO", no "// implement here", no truncation, no "...".
+10. App Router only — never Pages Router (no pages/ directory, no getServerSideProps, no getStaticProps).
+11. Client components that use hooks (useState, useEffect, useRouter, etc.) MUST have "use client"; as the very first line.
+12. Server components must NOT use useState, useEffect, or browser APIs.
+
+next.config.ts:
+13. Valid top-level keys ONLY: images, reactStrictMode, experimental, env, redirects, rewrites, headers. NEVER add typescript, eslint, compiler, or unknown keys.
+14. In experimental: NEVER use dynamicIO, ppr, or any flag marked canary-only. Only stable flags.
+
+OUTPUT FORMAT:
+15. When returning JSON: ONLY the raw JSON object. Zero markdown fences, zero explanation, nothing before or after {.
+16. Apply design_style and color_scheme to every UI file.
+17. animations="none" → no motion. "subtle" → CSS transitions only. "moderate" → CSS + IntersectionObserver. "rich" → framer-motion.
+18. Implement every item in features[].`;
 }
 
 function stackSummary(q: ProjectQuestionnaire): string {
@@ -443,6 +462,8 @@ CRITICAL component structure rules:
 - Every component file is independently editable without touching page.tsx
 
 Every file must be 100% complete and functional. Use ${q.styling === "tailwind" ? "Tailwind CSS classes" : q.styling} for styling.
+Every client component (uses hooks, event handlers, browser APIs) MUST have "use client"; as line 1.
+Never @apply a custom class from @layer components — only @apply built-in Tailwind utilities.
 
 ${jsonInstruction()}`;
 }
@@ -611,6 +632,8 @@ Requirements:
 - Apply ${q.design_style} design style and ${q.color_scheme} color scheme consistently
 - page.tsx files import components from @/components/ — never define reusable UI inline in a page file
 - Each logical section of a page (hero, product grid, filters, cart summary) must be its own component file
+- Client components using hooks or event handlers MUST start with "use client"; on line 1
+- NEVER @apply a custom class name — only built-in Tailwind utilities in @apply
 
 ${jsonInstruction()}`;
 }
@@ -690,6 +713,9 @@ ${q.color_scheme === "system_toggle" ? `- "src/components/ui/ThemeToggle.${t}":
   - Reads/writes to localStorage and applies class to document.documentElement` : ""}
 
 Styled with ${q.styling === "tailwind" ? "Tailwind CSS" : q.styling}. Match ${q.design_style} design style and ${q.color_scheme} color scheme.
+
+CRITICAL: Every component with useState/useEffect/useRouter MUST start with "use client"; on line 1.
+CRITICAL: Only @apply built-in Tailwind utilities. Never @apply a class you defined in @layer components.
 
 ${jsonInstruction()}`;
 }
@@ -797,6 +823,8 @@ Requirements:
 - ${q.styling === "tailwind" ? "Tailwind CSS classes for all styling" : q.styling + " for all styling"}
 - Proper TypeScript props interfaces with JSDoc if helpful
 - Import from @/ path alias
+- Every component using useState/useEffect/useRouter/event handlers MUST have "use client"; as line 1
+- NEVER @apply a custom class — only built-in Tailwind utilities in @apply statements
 
 ${jsonInstruction()}`;
 }
