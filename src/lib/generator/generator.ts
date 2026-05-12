@@ -145,6 +145,34 @@ export async function generateProject(
     // 2 — Config files (Haiku: templated configs, not complex logic)
     await step("Generating config files...", () => getConfigFilesPrompt(questionnaire), { model: HAIKU, maxTokens: 3000 });
 
+    // Overwrite globals.css deterministically — Claude consistently reverts to Tailwind v3 syntax
+    if (questionnaire.styling === "tailwind") {
+      const isDark = questionnaire.color_scheme === "dark";
+      const globalsCss = `@import "tailwindcss";
+
+:root {
+  --background: ${isDark ? "0 0% 4%" : "0 0% 100%"};
+  --foreground: ${isDark ? "0 0% 95%" : "0 0% 4%"};
+  --primary: 262 80% 60%;
+  --primary-foreground: 0 0% 100%;
+  --muted: ${isDark ? "0 0% 15%" : "0 0% 94%"};
+  --muted-foreground: ${isDark ? "0 0% 55%" : "0 0% 45%"};
+  --border: ${isDark ? "0 0% 18%" : "0 0% 88%"};
+  --radius: 0.5rem;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+`;
+      emit([makeFile("src/app/globals.css", globalsCss)]);
+    }
+
     // 3 — .env.example (Haiku: pure template)
     onEvent({ type: "progress", data: { label: "Generating .env.example..." } });
     const envRaw = await callClaude(system, getEnvExamplePrompt(questionnaire), { model: HAIKU, maxTokens: 1000 });
