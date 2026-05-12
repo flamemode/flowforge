@@ -53,14 +53,14 @@ ${stackSummary(q)}
 Requirements:
 - "name": "${name}"
 - Real, current version numbers for every dependency (no "latest", no "*")
-- devDependencies: typescript, eslint, prettier, @types/node, @types/react, @types/react-dom
+- devDependencies: typescript: ^5.0.0, eslint: ^9.0.0, prettier: ^3.0.0, @types/node: ^22.0.0, @types/react: ^19.0.0, @types/react-dom: ^19.0.0
 - scripts: { "dev": "next dev", "build": "next build", "start": "next start", "lint": "next lint", "type-check": "tsc --noEmit" }
 
 Required dependencies based on stack:
 ${q.framework === "nextjs" ? `- next: ${q.cms === "payload" ? "15.4.11" : "^15.0.0"}, react: ^19.0.0, react-dom: ^19.0.0` : ""}
 ${q.styling === "tailwind" ? "- tailwindcss: ^4.0.0, @tailwindcss/postcss: ^4.0.0" : ""}
 ${q.styling === "styled_components" ? "- styled-components: ^6.0.0" : ""}
-- clsx: ^2.1.0, tailwind-merge: ^2.5.0
+- clsx: ^2.1.0, tailwind-merge: ^2.5.0, lucide-react: ^0.460.0
 ${q.database === "supabase" ? "- @supabase/supabase-js: ^2.46.0, @supabase/ssr: ^0.5.0" : ""}
 ${q.database === "prisma_postgres" || q.database === "planetscale" ? "- @prisma/client: ^6.0.0\n- prisma: ^6.0.0 (devDependency)" : ""}
 ${q.database === "mongodb" ? "- mongoose: ^8.0.0" : ""}
