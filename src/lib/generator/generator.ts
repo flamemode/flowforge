@@ -54,8 +54,8 @@ async function callClaude(
   opts: { model?: string; maxTokens?: number } = {}
 ): Promise<string> {
   const client = getAnthropicClient();
-  const maxAttempts = 4;
-  const delays = [2000, 5000, 10000]; // ms between retries
+  const maxAttempts = 6;
+  const delays = [3000, 8000, 15000, 25000, 40000]; // ms between retries (~91s total)
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
@@ -70,7 +70,12 @@ async function callClaude(
     } catch (err: unknown) {
       const status = (err as { status?: number })?.status;
       const isRetryable = status === 529 || status === 503 || status === 429 || status === 500;
-      if (!isRetryable || attempt === maxAttempts - 1) throw err;
+      if (!isRetryable || attempt === maxAttempts - 1) {
+        // Throw a clean message instead of raw API JSON
+        if (status === 529) throw new Error("The AI service is temporarily overloaded. Please click Retry in a moment.");
+        if (status === 429) throw new Error("Rate limit reached. Please click Retry in a moment.");
+        throw err;
+      }
       await new Promise(res => setTimeout(res, delays[attempt]));
     }
   }
