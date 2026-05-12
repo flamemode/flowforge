@@ -25,6 +25,8 @@ const createProjectSchema = z.object({
     mobile_framework: z.string().optional(),
     mobile_backend: z.string().optional(),
     mobile_features: z.array(z.string()).optional(),
+    dev_os: z.enum(["macos_modern", "macos_catalina", "windows", "linux"]).optional(),
+    node_version: z.enum(["18", "20", "22"]).optional(),
   }),
 });
 

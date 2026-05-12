@@ -196,6 +196,21 @@ export const MOBILE_FEATURE_OPTIONS = [
   { value: "deep_linking", label: "Deep Linking", description: "Open app from URLs" },
 ] as const;
 
+// ─── Dev environment ─────────────────────────────────────────────────────────
+
+export const DEV_OS_OPTIONS = [
+  { value: "macos_modern", label: "macOS (Monterey+)", description: "macOS 12 or newer", icon: "🍎" },
+  { value: "macos_catalina", label: "macOS (Catalina/Big Sur)", description: "macOS 10.15–11", icon: "🍏" },
+  { value: "windows", label: "Windows 10/11", description: "Windows with PowerShell or WSL", icon: "🪟" },
+  { value: "linux", label: "Linux", description: "Ubuntu, Debian, Fedora, etc.", icon: "🐧" },
+] as const;
+
+export const NODE_VERSION_OPTIONS = [
+  { value: "18", label: "Node 18 LTS", description: "Older LTS — max compatibility" },
+  { value: "20", label: "Node 20 LTS", description: "Recommended LTS" },
+  { value: "22", label: "Node 22 LTS", description: "Latest LTS" },
+] as const;
+
 // ─── File language detection ──────────────────────────────────────────────────
 
 export const FILE_LANGUAGE_MAP: Record<string, string> = {

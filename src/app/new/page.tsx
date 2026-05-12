@@ -21,6 +21,8 @@ import {
   MOBILE_FRAMEWORK_OPTIONS,
   MOBILE_BACKEND_OPTIONS,
   MOBILE_FEATURE_OPTIONS,
+  DEV_OS_OPTIONS,
+  NODE_VERSION_OPTIONS,
 } from "@/lib/constants";
 import type { ProjectQuestionnaire } from "@/types";
 import { ChevronRight, ChevronLeft, Zap } from "lucide-react";
@@ -735,6 +737,52 @@ export default function NewProjectPage() {
                   className="w-full px-4 py-3 rounded-xl bg-zinc-900 border border-zinc-700 text-white placeholder:text-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 resize-none"
                 />
                 <p className="text-xs text-zinc-500 mt-1">{q.description.length} chars — aim for 20–300</p>
+              </div>
+
+              {/* Dev environment */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-400 mb-2">Your operating system</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {DEV_OS_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => set("dev_os", opt.value as ProjectQuestionnaire["dev_os"])}
+                      className={`flex items-center gap-2 p-3 rounded-xl border text-left transition-all ${
+                        q.dev_os === opt.value
+                          ? "border-violet-500 bg-violet-500/10"
+                          : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                      }`}
+                    >
+                      <span className="text-xl">{opt.icon}</span>
+                      <div>
+                        <div className="font-medium text-white text-sm">{opt.label}</div>
+                        <div className="text-xs text-zinc-500">{opt.description}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-zinc-400 mb-2">Node.js version <span className="text-zinc-600 font-normal">(run <code className="bg-zinc-800 px-1 rounded text-xs">node --version</code> to check)</span></label>
+                <div className="grid grid-cols-3 gap-2">
+                  {NODE_VERSION_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => set("node_version", opt.value as ProjectQuestionnaire["node_version"])}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        q.node_version === opt.value
+                          ? "border-violet-500 bg-violet-500/10"
+                          : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
+                      }`}
+                    >
+                      <div className="font-medium text-white text-sm">{opt.label}</div>
+                      <div className="text-xs text-zinc-500">{opt.description}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Summary */}

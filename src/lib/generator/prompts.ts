@@ -95,6 +95,8 @@ Include an "overrides" field to force React 19 across all transitive deps that m
   }
 }
 
+${q.node_version ? `Include an "engines" field: { "node": ">=${q.node_version}.0.0 <${String(Number(q.node_version) + 2)}.0.0" }` : ""}
+
 Return ONLY the raw JSON content of package.json. No markdown, no explanation.`;
 }
 
@@ -929,10 +931,13 @@ ${pkgName}/
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+
+- Node.js ${q.node_version ?? "18"}+
 - npm / yarn / pnpm
 ${q.database === "supabase" ? "- Supabase account (free tier works)" : ""}
 ${q.payments === "stripe" ? "- Stripe account" : ""}
+
+${q.dev_os === "windows" ? `> **Windows users:** These commands use PowerShell. If you prefer, install [Git Bash](https://gitforwindows.org/) or enable WSL2 for a Linux-like experience.` : ""}
+${q.dev_os === "macos_catalina" ? `> **macOS Catalina note:** If you encounter issues installing Node.js, use [nvm](https://github.com/nvm-sh/nvm): \`curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash\` then \`nvm install ${q.node_version ?? "18"}\`\n> Some native packages may require Xcode Command Line Tools: \`xcode-select --install\`` : ""}
 
 ### Installation
 
@@ -940,7 +945,7 @@ ${q.payments === "stripe" ? "- Stripe account" : ""}
 git clone <your-repo>
 cd ${pkgName}
 npm install
-cp .env.example .env.local
+${q.dev_os === "windows" ? `copy .env.example .env.local` : `cp .env.example .env.local`}
 # Edit .env.local with your credentials
 ${q.database === "supabase" ? "# Run supabase/schema.sql in your Supabase SQL Editor" : ""}
 ${q.database === "prisma_postgres" || q.database === "planetscale" ? "npx prisma db push" : ""}
