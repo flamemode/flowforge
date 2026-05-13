@@ -15,7 +15,6 @@ import {
   getCMSFilesPrompt,
   getPublicFilesPrompt,
   getReadmePrompt,
-  getPackageJsonPrompt,
   getConfigFilesPrompt,
 } from "./prompts";
 
@@ -47,6 +46,106 @@ function makeFile(
 
 const SONNET = "claude-sonnet-4-6";
 const HAIKU = "claude-haiku-4-5-20251001";
+
+// ─── Deterministic package.json builder ───────────────────────────────────────
+// Every version here is manually verified to be React 19 compatible.
+// Never let Claude generate package.json — it consistently uses wrong versions.
+
+function buildPackageJson(q: ProjectQuestionnaire): string {
+  const name = q.project_name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+  const isPayload = q.cms === "payload";
+  const isCatalina = q.dev_os === "macos_catalina";
+  const needsThemes = q.color_scheme === "system_toggle" || q.features?.includes("dark_mode");
+
+  const deps: Record<string, string> = {
+    // Core
+    ...(q.framework === "nextjs" ? { next: isPayload ? "15.4.11" : "^15.0.0" } : {}),
+    react: "^19.0.0",
+    "react-dom": "^19.0.0",
+    // Styling utilities always present
+    clsx: "^2.1.0",
+    "tailwind-merge": "^2.5.0",
+    "lucide-react": "^0.460.0",
+    // Tailwind
+    ...(q.styling === "tailwind" ? { tailwindcss: "^4.0.0", "@tailwindcss/postcss": "^4.0.0" } : {}),
+    ...(q.styling === "styled_components" ? { "styled-components": "^6.0.0" } : {}),
+    // Database
+    ...(q.database === "supabase" ? { "@supabase/supabase-js": "^2.46.0", "@supabase/ssr": "^0.5.0" } : {}),
+    ...(q.database === "mongodb" ? { mongoose: "^8.0.0" } : {}),
+    ...(q.database === "firebase" ? { firebase: "^11.0.0" } : {}),
+    ...((q.database === "prisma_postgres" || q.database === "planetscale") ? { "@prisma/client": "^6.0.0" } : {}),
+    // Auth
+    ...(q.auth === "nextauth" ? { "next-auth": "^5.0.0" } : {}),
+    ...(q.auth === "clerk" ? { "@clerk/nextjs": "^6.0.0" } : {}),
+    ...(q.auth === "lucia" ? { lucia: "^3.0.0", oslo: "^1.2.0" } : {}),
+    // Payments
+    ...(q.payments === "stripe" ? { stripe: "^17.0.0", "@stripe/stripe-js": "^4.0.0" } : {}),
+    ...(q.payments === "lemonsqueezy" ? { "@lemonsqueezy/lemonsqueezy-js": "^1.3.0" } : {}),
+    // Extra APIs
+    ...(q.extra_apis?.includes("resend") ? { resend: "^4.0.0" } : {}),
+    ...(q.extra_apis?.includes("openai") ? { openai: "^4.70.0" } : {}),
+    ...(q.extra_apis?.includes("anthropic") ? { "@anthropic-ai/sdk": "^0.39.0" } : {}),
+    ...(q.extra_apis?.includes("cloudinary") ? { cloudinary: "^2.5.0", "next-cloudinary": "^6.0.0" } : {}),
+    ...(q.extra_apis?.includes("pusher") ? { pusher: "^5.2.0", "pusher-js": "^8.4.0" } : {}),
+    ...(q.extra_apis?.includes("algolia") ? { algoliasearch: "^5.0.0" } : {}),
+    ...(q.extra_apis?.includes("mapbox") ? { "mapbox-gl": "^3.7.0" } : {}),
+    ...(q.extra_apis?.includes("twilio") ? { twilio: "^5.3.0" } : {}),
+    // CMS
+    ...(q.cms === "payload" ? {
+      payload: "^3.0.0",
+      "@payloadcms/next": "^3.0.0",
+      "@payloadcms/richtext-lexical": "^3.0.0",
+      ...(q.database === "mongodb" ? { "@payloadcms/db-mongodb": "^3.0.0" } : { "@payloadcms/db-postgres": "^3.0.0" }),
+    } : {}),
+    ...(q.cms === "sanity" ? { "next-sanity": "^9.0.0", "@sanity/image-url": "^1.0.3", sanity: "^3.60.0" } : {}),
+    ...(q.cms === "contentful" ? { contentful: "^11.0.0" } : {}),
+    // Features
+    ...(q.animations === "rich" ? { "framer-motion": "^12.0.0" } : {}),
+    ...(q.features?.includes("i18n") ? { "next-intl": "^3.20.0" } : {}),
+    ...(q.features?.includes("analytics") ? { "@vercel/analytics": "^1.3.0" } : {}),
+    ...(q.features?.includes("pwa") ? { "@ducanh2912/next-pwa": "^10.0.0" } : {}),
+    ...(needsThemes ? { "next-themes": "^0.4.6" } : {}),
+    ...(q.project_type === "game" ? { phaser: "^3.86.0" } : {}),
+  };
+
+  const devDeps: Record<string, string> = {
+    typescript: "^5.0.0",
+    eslint: "^9.0.0",
+    prettier: "^3.0.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    ...(q.database === "prisma_postgres" || q.database === "planetscale" ? { prisma: "^6.0.0" } : {}),
+    ...(q.extra_apis?.includes("mapbox") ? { "@types/mapbox-gl": "^3.4.0" } : {}),
+  };
+
+  const overrides: Record<string, string> = {
+    react: "^19.0.0",
+    "react-dom": "^19.0.0",
+    // Force React 19 compatible versions of common offenders
+    "next-themes": "^0.4.6",
+    ...(isCatalina ? { esbuild: "0.17.19", tsx: "3.14.0" } : {}),
+  };
+
+  const pkg = {
+    name,
+    version: "1.0.0",
+    private: true,
+    scripts: {
+      dev: "next dev",
+      build: "next build",
+      start: "next start",
+      lint: "next lint",
+      "type-check": "tsc --noEmit",
+    },
+    dependencies: deps,
+    devDependencies: devDeps,
+    overrides,
+    engines: { node: `>=${q.node_version ?? "18"}.0.0` },
+  };
+
+  return JSON.stringify(pkg, null, 2);
+}
 
 async function callClaude(
   systemPrompt: string,
@@ -155,10 +254,9 @@ export async function generateProject(
   };
 
   try {
-    // 1 — package.json (Haiku: simple JSON, 1500 tokens plenty)
+    // 1 — package.json (deterministic — never via Claude to avoid wrong versions)
     onEvent({ type: "progress", data: { label: "Generating package.json..." } });
-    const pkgRaw = await callClaude(system, getPackageJsonPrompt(questionnaire), { model: HAIKU, maxTokens: 1500 });
-    emit([makeFile("package.json", pkgRaw.replace(/^```[a-z]*\n?/gm, "").replace(/^```$/gm, "").trim())]);
+    emit([makeFile("package.json", buildPackageJson(questionnaire))]);
 
     // 2 — Config files (Haiku: templated configs, not complex logic)
     await step("Generating config files...", () => getConfigFilesPrompt(questionnaire), { model: HAIKU, maxTokens: 3000 });
