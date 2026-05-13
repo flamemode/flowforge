@@ -115,12 +115,14 @@ ${q.features?.includes("i18n") ? "- next-intl: ^3.20.0" : ""}
 ${q.features?.includes("analytics") ? "- @vercel/analytics: ^1.3.0" : ""}
 ${q.features?.includes("pwa") ? "- @ducanh2912/next-pwa: ^10.0.0" : ""}
 ${q.project_type === "game" ? "- phaser: ^3.86.0" : ""}
+${q.color_scheme === "system_toggle" || q.features?.includes("dark_mode") ? "- next-themes: ^0.4.6" : ""}
 
 Include an "overrides" field to force React 19 across all transitive deps:
 {
   "overrides": {
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"${q.dev_os === "macos_catalina" ? `,
+    "react-dom": "^19.0.0",
+    "next-themes": "^0.4.6"${q.dev_os === "macos_catalina" ? `,
     "esbuild": "0.17.19",
     "tsx": "3.14.0"` : ""}
   }
