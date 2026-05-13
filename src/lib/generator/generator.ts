@@ -15,7 +15,6 @@ import {
   getCMSFilesPrompt,
   getPublicFilesPrompt,
   getReadmePrompt,
-  getConfigFilesPrompt,
 } from "./prompts";
 
 export interface GenerationEvent {
@@ -226,6 +225,153 @@ function parseJsonResponse(raw: string): Record<string, string> {
   }
 }
 
+// ─── Deterministic config files builder ──────────────────────────────────────
+// tsconfig, next.config, postcss, gitignore, eslint, prettier — never via Claude.
+
+function buildConfigFiles(q: ProjectQuestionnaire): Omit<GeneratedFile, "id" | "project_id" | "created_at">[] {
+  const files: Omit<GeneratedFile, "id" | "project_id" | "created_at">[] = [];
+  const isNextjs = q.framework === "nextjs";
+  const isAstro = q.framework === "astro";
+  const isRemix = q.framework === "remix";
+  const isVue = q.framework === "vue";
+  const isTs = q.language !== "javascript";
+
+  // tsconfig.json
+  if (!isVue) {
+    const tsconfig = {
+      compilerOptions: {
+        target: "ES2017",
+        lib: ["dom", "dom.iterable", "esnext"],
+        allowJs: true,
+        skipLibCheck: true,
+        strict: true,
+        noEmit: true,
+        esModuleInterop: true,
+        module: "esnext",
+        moduleResolution: "bundler",
+        resolveJsonModule: true,
+        isolatedModules: true,
+        jsx: "preserve",
+        incremental: true,
+        ...(isNextjs ? { plugins: [{ name: "next" }] } : {}),
+        paths: { "@/*": ["./src/*"] },
+      },
+      include: isNextjs
+        ? ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"]
+        : ["src/**/*.ts", "src/**/*.tsx"],
+      exclude: ["node_modules"],
+    };
+    files.push(makeFile("tsconfig.json", JSON.stringify(tsconfig, null, 2)));
+  }
+
+  // next.config.ts
+  if (isNextjs) {
+    const withPayload = q.cms === "payload";
+    const nextConfig = withPayload
+      ? `import type { NextConfig } from "next";
+import { withPayload } from "@payloadcms/next/withPayload";
+
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
+};
+
+export default withPayload(nextConfig);
+`
+      : `import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
+};
+
+export default nextConfig;
+`;
+    files.push(makeFile("next.config.ts", nextConfig));
+  }
+
+  // postcss.config.mjs (Tailwind v4)
+  if (q.styling === "tailwind" && !isVue) {
+    files.push(makeFile("postcss.config.mjs", `export default {\n  plugins: {\n    "@tailwindcss/postcss": {},\n  },\n};\n`));
+  }
+
+  // astro.config.mjs
+  if (isAstro) {
+    files.push(makeFile("astro.config.mjs", `import { defineConfig } from "astro/config";\nimport react from "@astrojs/react";\nimport tailwind from "@astrojs/tailwind";\n\nexport default defineConfig({\n  integrations: [react(), tailwind()],\n});\n`));
+  }
+
+  // vite.config.ts (Remix)
+  if (isRemix) {
+    files.push(makeFile("vite.config.ts", `import { vitePlugin as remix } from "@remix-run/dev";\nimport { defineConfig } from "vite";\n\nexport default defineConfig({\n  plugins: [remix()],\n});\n`));
+  }
+
+  // nuxt.config.ts
+  if (isVue) {
+    files.push(makeFile("nuxt.config.ts", `export default defineNuxtConfig({\n  devtools: { enabled: true },\n  modules: [],\n  css: [],\n});\n`));
+  }
+
+  // .gitignore
+  files.push(makeFile(".gitignore", [
+    "# dependencies",
+    "node_modules",
+    ".pnp",
+    ".pnp.js",
+    "",
+    "# builds",
+    ".next",
+    "out",
+    "dist",
+    "build",
+    ".astro",
+    "",
+    "# env",
+    ".env",
+    ".env.local",
+    ".env.*.local",
+    "",
+    "# misc",
+    ".DS_Store",
+    "*.log",
+    ".vercel",
+    ".turbo",
+  ].join("\n")));
+
+  // .eslintrc.json (only for frameworks that use it)
+  if (!isVue && !isAstro) {
+    const eslintConfig = isNextjs
+      ? { extends: ["next/core-web-vitals", ...(isTs ? ["next/typescript"] : [])] }
+      : { extends: ["eslint:recommended", ...(isTs ? ["plugin:@typescript-eslint/recommended"] : [])] };
+    files.push(makeFile(".eslintrc.json", JSON.stringify(eslintConfig, null, 2)));
+  }
+
+  // .prettierrc
+  files.push(makeFile(".prettierrc", JSON.stringify({
+    semi: true,
+    singleQuote: false,
+    tabWidth: 2,
+    trailingComma: "es5",
+    printWidth: 100,
+  }, null, 2)));
+
+  // PWA manifest
+  if (q.features?.includes("pwa")) {
+    const manifest = {
+      name: q.project_name,
+      short_name: q.project_name.split(" ")[0],
+      description: q.description,
+      start_url: "/",
+      display: "standalone",
+      background_color: q.color_scheme === "dark" ? "#0a0a0a" : "#ffffff",
+      theme_color: "#7c3aed",
+      icons: [
+        { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
+        { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      ],
+    };
+    files.push(makeFile("public/manifest.json", JSON.stringify(manifest, null, 2)));
+  }
+
+  return files;
+}
+
 export async function generateProject(
   questionnaire: ProjectQuestionnaire,
   onEvent: OnEvent
@@ -274,8 +420,9 @@ export async function generateProject(
     onEvent({ type: "progress", data: { label: "Generating package.json..." } });
     emit([makeFile("package.json", buildPackageJson(questionnaire))]);
 
-    // 2 — Config files (Haiku: templated configs, not complex logic)
-    await step("Generating config files...", () => getConfigFilesPrompt(questionnaire), { model: HAIKU, maxTokens: 3000 });
+    // 2 — Config files (deterministic — tsconfig, next.config, postcss, gitignore, eslint, prettier)
+    onEvent({ type: "progress", data: { label: "Generating config files..." } });
+    emit(buildConfigFiles(questionnaire));
 
     // Overwrite globals.css deterministically — Claude consistently reverts to Tailwind v3 syntax
     if (questionnaire.styling === "tailwind") {
