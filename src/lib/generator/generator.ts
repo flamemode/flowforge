@@ -53,21 +53,40 @@ const HAIKU = "claude-haiku-4-5-20251001";
 
 function buildPackageJson(q: ProjectQuestionnaire): string {
   const name = q.project_name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+  const isNextjs = q.framework === "nextjs";
+  const isAstro = q.framework === "astro";
+  const isRemix = q.framework === "remix";
+  const isVue = q.framework === "vue";
+  const isPlainHtml = q.framework === "plain_html";
+  const usesReact = !isVue && !isPlainHtml; // Astro/Remix/Next all use React
   const isPayload = q.cms === "payload";
   const isCatalina = q.dev_os === "macos_catalina";
   const needsThemes = q.color_scheme === "system_toggle" || q.features?.includes("dark_mode");
 
+  // Framework-specific scripts
+  const scripts: Record<string, string> = isAstro
+    ? { dev: "astro dev", build: "astro build", preview: "astro preview", "type-check": "tsc --noEmit" }
+    : isRemix
+    ? { dev: "remix dev", build: "remix build", start: "remix-serve ./build/server/index.js", "type-check": "tsc --noEmit" }
+    : isVue
+    ? { dev: "nuxt dev", build: "nuxt build", generate: "nuxt generate", preview: "nuxt preview", "type-check": "tsc --noEmit" }
+    : isPlainHtml
+    ? { dev: "npx serve .", build: "echo 'No build step'", "type-check": "tsc --noEmit" }
+    : { dev: "next dev", build: "next build", start: "next start", lint: "next lint", "type-check": "tsc --noEmit" };
+
   const deps: Record<string, string> = {
-    // Core
-    ...(q.framework === "nextjs" ? { next: isPayload ? "15.4.11" : "^15.0.0" } : {}),
-    react: "^19.0.0",
-    "react-dom": "^19.0.0",
-    // Styling utilities always present
+    // Framework core
+    ...(isNextjs ? { next: isPayload ? "15.4.11" : "^15.0.0" } : {}),
+    ...(isAstro ? { astro: "^5.0.0", "@astrojs/react": "^4.0.0", "@astrojs/tailwind": "^5.1.0" } : {}),
+    ...(isRemix ? { "@remix-run/node": "^2.15.0", "@remix-run/react": "^2.15.0", "@remix-run/serve": "^2.15.0", isbot: "^4.4.0" } : {}),
+    ...(isVue ? { nuxt: "^3.14.0", vue: "^3.5.0" } : {}),
+    // React (all frameworks except Vue and plain HTML)
+    ...(usesReact ? { react: "^19.0.0", "react-dom": "^19.0.0" } : {}),
+    // Utility
     clsx: "^2.1.0",
-    "tailwind-merge": "^2.5.0",
-    "lucide-react": "^0.460.0",
+    ...(usesReact ? { "tailwind-merge": "^2.5.0", "lucide-react": "^0.460.0" } : {}),
     // Tailwind
-    ...(q.styling === "tailwind" ? { tailwindcss: "^4.0.0", "@tailwindcss/postcss": "^4.0.0" } : {}),
+    ...(q.styling === "tailwind" && !isVue ? { tailwindcss: "^4.0.0", "@tailwindcss/postcss": "^4.0.0" } : {}),
     ...(q.styling === "styled_components" ? { "styled-components": "^6.0.0" } : {}),
     // Database
     ...(q.database === "supabase" ? { "@supabase/supabase-js": "^2.46.0", "@supabase/ssr": "^0.5.0" } : {}),
@@ -101,46 +120,43 @@ function buildPackageJson(q: ProjectQuestionnaire): string {
     ...(q.cms === "contentful" ? { contentful: "^11.0.0" } : {}),
     // Features
     ...(q.animations === "rich" ? { "framer-motion": "^12.0.0" } : {}),
-    ...(q.features?.includes("i18n") ? { "next-intl": "^3.20.0" } : {}),
-    ...(q.features?.includes("analytics") ? { "@vercel/analytics": "^1.3.0" } : {}),
-    ...(q.features?.includes("pwa") ? { "@ducanh2912/next-pwa": "^10.0.0" } : {}),
-    ...(needsThemes ? { "next-themes": "^0.4.6" } : {}),
+    ...(q.features?.includes("i18n") && isNextjs ? { "next-intl": "^3.20.0" } : {}),
+    ...(q.features?.includes("analytics") && isNextjs ? { "@vercel/analytics": "^1.3.0" } : {}),
+    ...(q.features?.includes("pwa") && isNextjs ? { "@ducanh2912/next-pwa": "^10.0.0" } : {}),
+    ...(needsThemes && usesReact ? { "next-themes": "^0.4.6" } : {}),
     ...(q.project_type === "game" ? { phaser: "^3.86.0" } : {}),
   };
 
   const devDeps: Record<string, string> = {
     typescript: "^5.0.0",
-    eslint: "^9.0.0",
+    ...(isNextjs || isRemix ? { eslint: "^9.0.0" } : {}),
     prettier: "^3.0.0",
     "@types/node": "^22.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
+    ...(usesReact ? { "@types/react": "^19.0.0", "@types/react-dom": "^19.0.0" } : {}),
+    ...(isRemix ? { "@remix-run/dev": "^2.15.0", vite: "^6.0.0" } : {}),
+    ...(isAstro ? { "@astrojs/ts-plugin": "^1.10.0" } : {}),
     ...(q.database === "prisma_postgres" || q.database === "planetscale" ? { prisma: "^6.0.0" } : {}),
     ...(q.extra_apis?.includes("mapbox") ? { "@types/mapbox-gl": "^3.4.0" } : {}),
   };
 
-  const overrides: Record<string, string> = {
+  // Overrides only relevant for React-based projects
+  const overrides: Record<string, string> = usesReact ? {
     react: "^19.0.0",
     "react-dom": "^19.0.0",
-    // Force React 19 compatible versions of common offenders
     "next-themes": "^0.4.6",
     ...(isCatalina ? { esbuild: "0.17.19", tsx: "3.14.0" } : {}),
+  } : {
+    ...(isCatalina ? { esbuild: "0.17.19" } : {}),
   };
 
-  const pkg = {
+  const pkg: Record<string, unknown> = {
     name,
     version: "1.0.0",
     private: true,
-    scripts: {
-      dev: "next dev",
-      build: "next build",
-      start: "next start",
-      lint: "next lint",
-      "type-check": "tsc --noEmit",
-    },
+    scripts,
     dependencies: deps,
     devDependencies: devDeps,
-    overrides,
+    ...(Object.keys(overrides).length > 0 ? { overrides } : {}),
     engines: { node: `>=${q.node_version ?? "18"}.0.0` },
   };
 
