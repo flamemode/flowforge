@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { generateProject } from "@/lib/generator/generator";
 import type { GenerationEvent } from "@/lib/generator/generator";
 import { generateMobileProject } from "@/lib/generator/mobile-generator";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
+import { sendGenerationComplete } from "@/lib/email";
 
 export const maxDuration = 300;
 
@@ -18,6 +22,15 @@ export async function POST(
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Rate limit: max 5 generations per hour per user
+  const rl = checkRateLimit(`generate:${user.id}`, { max: 5, windowMs: 3600_000 });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many generations. Please wait before trying again.", retry_after_ms: rl.retryAfterMs },
+      { status: 429 }
+    );
+  }
 
   const { data: project, error: projectError } = await supabase
     .from("generated_projects")
@@ -77,7 +90,7 @@ export async function POST(
               .from("generated_files")
               .upsert(batch, { onConflict: "project_id,path", ignoreDuplicates: false });
             if (insertError) {
-              console.error(`Failed to save files batch ${i}-${i + BATCH}:`, insertError);
+              logger.error(`Failed to save files batch ${i}-${i + BATCH}`, insertError, { projectId: id, userId: user.id });
               throw new Error(`Database error saving files: ${insertError.message}`);
             }
           }
@@ -87,15 +100,34 @@ export async function POST(
           .from("generated_projects")
           .update({ status: "complete", file_count: files.length, completed_at: new Date().toISOString() })
           .eq("id", id);
+
+        // Send generation-complete email (fire-and-forget)
+        sendGenerationComplete({
+          to: user.email ?? "",
+          name: user.user_metadata?.full_name ?? null,
+          projectName: project.name,
+          projectId: id,
+        }).catch((err) => logger.error("Failed to send generation email", err, { projectId: id }));
       } catch (err) {
         await supabase
           .from("generated_projects")
           .update({ status: "failed" })
           .eq("id", id);
 
+        logger.error("Generation failed", err, { projectId: id, userId: user.id });
+
+        // Refund the credit since generation failed
+        try {
+          const admin = createAdminClient();
+          await admin.rpc("refund_credit", { user_uuid: user.id });
+          logger.info("Credit refunded after generation failure", { projectId: id, userId: user.id });
+        } catch (refundErr) {
+          logger.error("Failed to refund credit", refundErr, { projectId: id, userId: user.id });
+        }
+
         controller.enqueue(enc.encode(sse({
           type: "error",
-          data: { message: String(err) },
+          data: { message: String(err) + " Your credit has been refunded." },
         })));
       } finally {
         controller.close();

@@ -10,6 +10,7 @@ create table if not exists public.profiles (
   email text not null,
   full_name text,
   subscription_tier text not null default 'free' check (subscription_tier in ('free', 'pro', 'team', 'agency')),
+  is_admin boolean not null default false,
   credits integer not null default 2,
   stripe_customer_id text unique,
   created_at timestamptz not null default now(),
@@ -109,18 +110,26 @@ create table if not exists public.stripe_events (
 create or replace function public.spend_credit(user_uuid uuid)
 returns boolean as $$
 declare
-  current_credits integer;
+  remaining integer;
 begin
-  select credits into current_credits from public.profiles where id = user_uuid;
-  if current_credits <= 0 then return false; end if;
-  update public.profiles set credits = credits - 1 where id = user_uuid;
-  return true;
+  -- Atomic decrement: only succeeds if credits > 0, prevents race conditions
+  update public.profiles
+    set credits = credits - 1
+    where id = user_uuid and credits > 0
+    returning credits into remaining;
+  return found;
 end;
 $$ language plpgsql security definer;
 
 create or replace function public.add_credits(user_uuid uuid, amount integer)
 returns void as $$
 begin
+  -- When called via authenticated (not service-role), require admin
+  if current_setting('role', true) = 'authenticated' then
+    if not exists (select 1 from public.profiles where id = auth.uid() and is_admin = true) then
+      raise exception 'Only admins can add credits';
+    end if;
+  end if;
   update public.profiles set credits = credits + amount where id = user_uuid;
 end;
 $$ language plpgsql security definer;
@@ -132,6 +141,7 @@ grant all on public.generated_projects to authenticated;
 grant all on public.generated_files to authenticated;
 grant all on public.credit_purchases to authenticated;
 grant execute on function public.spend_credit(uuid) to authenticated;
+-- add_credits is admin-gated: authenticated users must have is_admin=true
 grant execute on function public.add_credits(uuid, integer) to authenticated;
 
 -- Give existing users 2 free credits if they have none

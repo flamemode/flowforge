@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { sendPurchaseConfirmation } from "@/lib/email";
+import { logger } from "@/lib/logger";
 import type Stripe from "stripe";
 
 export async function POST(request: NextRequest) {
@@ -14,7 +16,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  // Use service-role client — webhooks have no user session, RLS would block operations
+  const supabase = createAdminClient();
 
   // Idempotency
   const { data: existing } = await supabase
@@ -41,6 +44,24 @@ export async function POST(request: NextRequest) {
           credits,
           amount_paid: session.amount_total ?? 0,
         });
+
+        // Send purchase confirmation email
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("email, full_name")
+          .eq("id", userId)
+          .single();
+
+        if (profile?.email) {
+          const packNames: Record<string, string> = { starter: "Starter Pack", studio: "Studio Pack", agency: "Agency Pack" };
+          sendPurchaseConfirmation({
+            to: profile.email,
+            name: profile.full_name,
+            packName: packNames[packId ?? ""] ?? "Credit Pack",
+            credits,
+            amountPaid: session.amount_total ?? 0,
+          }).catch((err) => logger.error("Failed to send purchase email", err, { userId }));
+        }
       }
       break;
     }
