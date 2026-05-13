@@ -138,6 +138,128 @@ function parseJsonResponse(raw: string): Record<string, string> {
   }
 }
 
+/**
+ * Build the allowlist of package names the generated project may include.
+ * Anything not on this list is stripped from the generated package.json.
+ */
+function getAllowedPackages(q: ProjectQuestionnaire): Set<string> {
+  const pkgs = new Set<string>([
+    // Universal dev deps
+    "typescript", "eslint", "prettier", "@types/node",
+  ]);
+
+  // Framework core
+  if (q.framework === "nextjs") {
+    ["next", "react", "react-dom", "@types/react", "@types/react-dom"].forEach(p => pkgs.add(p));
+  }
+  if (q.framework === "astro") {
+    ["astro", "react", "react-dom", "@astrojs/react", "@types/react", "@types/react-dom"].forEach(p => pkgs.add(p));
+    if (q.styling === "tailwind") pkgs.add("@astrojs/tailwind");
+  }
+  if (q.framework === "remix") {
+    ["@remix-run/node", "@remix-run/react", "@remix-run/serve", "@remix-run/dev",
+     "react", "react-dom", "@types/react", "@types/react-dom", "isbot",
+     "vite", "vite-tsconfig-paths"].forEach(p => pkgs.add(p));
+  }
+  if (q.framework === "vue") {
+    ["nuxt", "vue"].forEach(p => pkgs.add(p));
+    if (q.styling === "tailwind") pkgs.add("@nuxtjs/tailwindcss");
+  }
+  if (q.framework === "plain_html") {
+    if (q.styling === "tailwind") pkgs.add("tailwindcss");
+    pkgs.add("serve");
+  }
+
+  // Styling
+  if (q.styling === "tailwind") {
+    ["tailwindcss", "@tailwindcss/postcss"].forEach(p => pkgs.add(p));
+  }
+  if (q.styling === "styled_components") pkgs.add("styled-components");
+
+  // Utilities
+  ["clsx", "tailwind-merge", "lucide-react"].forEach(p => pkgs.add(p));
+
+  // Database
+  if (q.database === "supabase") {
+    ["@supabase/supabase-js", "@supabase/ssr"].forEach(p => pkgs.add(p));
+  }
+  if (q.database === "prisma_postgres" || q.database === "planetscale") {
+    ["@prisma/client", "prisma"].forEach(p => pkgs.add(p));
+  }
+  if (q.database === "mongodb") pkgs.add("mongoose");
+  if (q.database === "firebase") pkgs.add("firebase");
+
+  // Auth
+  if (q.auth === "nextauth") pkgs.add("next-auth");
+  if (q.auth === "clerk") pkgs.add("@clerk/nextjs");
+  if (q.auth === "lucia") ["lucia", "oslo"].forEach(p => pkgs.add(p));
+
+  // Payments — explicitly NO @stripe/react-stripe-js
+  if (q.payments === "stripe") {
+    ["stripe", "@stripe/stripe-js"].forEach(p => pkgs.add(p));
+  }
+  if (q.payments === "lemonsqueezy") pkgs.add("@lemonsqueezy/lemonsqueezy-js");
+
+  // APIs
+  if (q.extra_apis?.includes("resend")) pkgs.add("resend");
+  if (q.extra_apis?.includes("openai")) pkgs.add("openai");
+  if (q.extra_apis?.includes("anthropic")) pkgs.add("@anthropic-ai/sdk");
+  if (q.extra_apis?.includes("cloudinary")) {
+    ["cloudinary", "next-cloudinary"].forEach(p => pkgs.add(p));
+  }
+  if (q.extra_apis?.includes("pusher")) ["pusher", "pusher-js"].forEach(p => pkgs.add(p));
+  if (q.extra_apis?.includes("algolia")) pkgs.add("algoliasearch");
+  if (q.extra_apis?.includes("mapbox")) ["mapbox-gl", "@types/mapbox-gl"].forEach(p => pkgs.add(p));
+  if (q.extra_apis?.includes("twilio")) pkgs.add("twilio");
+
+  // CMS
+  if (q.cms === "payload") {
+    ["payload", "@payloadcms/next", "@payloadcms/richtext-lexical",
+     "@payloadcms/db-mongodb", "@payloadcms/db-postgres"].forEach(p => pkgs.add(p));
+  }
+  if (q.cms === "sanity") ["next-sanity", "@sanity/image-url", "sanity"].forEach(p => pkgs.add(p));
+  if (q.cms === "contentful") pkgs.add("contentful");
+
+  // Features
+  if (q.animations === "rich") pkgs.add("framer-motion");
+  if (q.features?.includes("i18n")) pkgs.add("next-intl");
+  if (q.features?.includes("analytics")) pkgs.add("@vercel/analytics");
+  if (q.features?.includes("pwa")) pkgs.add("@ducanh2912/next-pwa");
+  if (q.project_type === "game") pkgs.add("phaser");
+
+  return pkgs;
+}
+
+/**
+ * Strip any dependency Claude invented that isn't on the allowlist.
+ * Also enforce pinned versions for key packages.
+ */
+function sanitizePackageJson(raw: string, q: ProjectQuestionnaire): string {
+  try {
+    const pkg = JSON.parse(raw);
+    const allowed = getAllowedPackages(q);
+
+    for (const field of ["dependencies", "devDependencies"] as const) {
+      if (pkg[field] && typeof pkg[field] === "object") {
+        for (const dep of Object.keys(pkg[field])) {
+          if (!allowed.has(dep)) {
+            delete pkg[field][dep];
+          }
+        }
+      }
+    }
+
+    // Enforce pinned versions for problematic packages
+    if (q.payments === "stripe" && pkg.dependencies?.["@stripe/stripe-js"]) {
+      pkg.dependencies["@stripe/stripe-js"] = "^5.0.0";
+    }
+
+    return JSON.stringify(pkg, null, 2);
+  } catch {
+    return raw;
+  }
+}
+
 function generateDeterministicConfigs(
   q: ProjectQuestionnaire
 ): Omit<GeneratedFile, "id" | "project_id" | "created_at">[] {
@@ -358,7 +480,9 @@ export async function generateProject(
     // 1 — package.json (Sonnet: complex dependency resolution)
     onEvent({ type: "progress", data: { label: "Generating package.json..." } });
     const pkgRaw = await callClaude(system, getPackageJsonPrompt(questionnaire), { model: SONNET, maxTokens: 3000 });
-    emit([makeFile("package.json", pkgRaw.replace(/^```[a-z]*\n?/gm, "").replace(/^```$/gm, "").trim())]);
+    const pkgCleaned = pkgRaw.replace(/^```[a-z]*\n?/gm, "").replace(/^```$/gm, "").trim();
+    const pkgSanitized = sanitizePackageJson(pkgCleaned, questionnaire);
+    emit([makeFile("package.json", pkgSanitized)]);
 
     // 2a — Deterministic config files (never trust AI for these)
     onEvent({ type: "progress", data: { label: "Generating config files..." } });
